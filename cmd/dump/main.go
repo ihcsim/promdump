@@ -15,6 +15,8 @@ import (
 	"github.com/prometheus/prometheus/tsdb"
 )
 
+const targetDir = "/tmp"
+
 var logger = initLogger()
 
 func main() {
@@ -22,17 +24,17 @@ func main() {
 		defaultMaxTime = time.Now()
 		defaultMinTime = defaultMaxTime.Add(-2 * time.Hour)
 
-		dir     = flag.String("data-dir", "/prometheus", "path to the Prometheus data directory")
+		dataDir = flag.String("data-dir", "/prometheus", "path to the Prometheus data directory")
 		maxTime = flag.Int64("max-time", defaultMaxTime.Unix(), "maximum timestamp of the data")
 		minTime = flag.Int64("min-time", defaultMinTime.Unix(), "minimum timestamp of the data")
 	)
 	flag.Parse()
 
-	logger.Log("dataDir", dir,
+	logger.Log("dataDir", dataDir,
 		"maxTime", time.Unix(*maxTime, 0),
 		"minTime", time.Unix(*minTime, 0))
 
-	db, err := tsdb.OpenDBReadOnly(*dir, logger)
+	db, err := tsdb.OpenDBReadOnly(*dataDir, logger)
 	if err != nil {
 		exit(err)
 	}
@@ -119,7 +121,7 @@ func main() {
 	}
 
 	now := time.Now()
-	targetFilename := fmt.Sprintf("promdump-%s.tar.gz", now.Format("2006-01-02-150405"))
+	targetFilename := fmt.Sprintf(filepath.Join(targetDir, "promdump-%s.tar.gz"), now.Format("2006-01-02-150405"))
 	targetFile, err := os.Create(targetFilename)
 	if err != nil {
 		exit(err)
@@ -137,6 +139,8 @@ func main() {
 	if _, err := gwriter.Write(buf.Bytes()); err != nil {
 		exit(err)
 	}
+
+	os.Stdout.Write([]byte(targetFilename))
 }
 
 func initLogger() log.Logger {
