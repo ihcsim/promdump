@@ -11,13 +11,13 @@ import (
 	"strings"
 	"time"
 
-	"github.com/go-kit/kit/log"
+	"github.com/ihcsim/promdump/pkg/log"
 	"github.com/prometheus/prometheus/tsdb"
 )
 
 const targetDir = "/tmp"
 
-var logger = initLogger()
+var logger = log.New(os.Stderr)
 
 func main() {
 	var (
@@ -141,14 +141,6 @@ func main() {
 	}
 
 	os.Stdout.Write([]byte(targetFilename))
-}
-
-func initLogger() log.Logger {
-	logger := log.NewLogfmtLogger(os.Stderr)
-	logger = log.With(logger,
-		"timestamp", log.DefaultTimestamp,
-		"caller", log.DefaultCaller)
-	return logger
 }
 
 func exit(err error) {
