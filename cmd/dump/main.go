@@ -11,6 +11,7 @@ import (
 	"strings"
 	"time"
 
+	kitlog "github.com/go-kit/kit/log"
 	"github.com/ihcsim/promdump/pkg/log"
 	"github.com/prometheus/prometheus/tsdb"
 )
@@ -62,7 +63,7 @@ func main() {
 		}
 
 		if b.MaxTime() <= *maxTime || b.MinTime() >= *minTime {
-			blogger := log.With(logger, "block", b.Dir())
+			blogger := kitlog.With(logger, "block", b.Dir())
 			err := filepath.Walk(b.Dir(), func(path string, info os.FileInfo, err error) error {
 				if err != nil {
 					return err
@@ -86,7 +87,7 @@ func main() {
 				}
 
 				fnameIndex := strings.Index(path, b.Dir()) + len(b.Dir()) + 1
-				flogger := log.With(blogger, "file", path[fnameIndex:])
+				flogger := kitlog.With(blogger, "file", path[fnameIndex:])
 				if err := writeHeader(tar.TypeReg); err != nil {
 					return err
 				}
