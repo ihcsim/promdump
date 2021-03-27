@@ -4,30 +4,40 @@ TARGET_DIR ?= /prometheus
 BUILD_OS ?= linux
 BUILD_ARCH ?= amd64
 
+BASE_DIR = "$(shell pwd)"
+TARGET_DIR = "$(BASE_DIR)"/target
+TARGET_BIN_DIR = "$(TARGET_DIR)"/bin
+
 all: test build
 
-build: promdump server cli
+build: prebuild core streaming cli
+prebuild:
+	rm -rf ./target/bin
+	mkdir -p ./target/bin
 
-test:
+test: test-core test-streaming test-cli
 	go test -race ./...
 
-.PHONY: server
-server:
-	rm -f ./server
-	CGO_ENABLED=0 GOOS="$(BUILD_OS)" GOARCH="$(BUILD_ARCH)" go build -o server ./cmd/server
+test-%:
+	cd ./$* && go test -race ./...
+
+.PHONY: core
+core: test-core
+	cd core ;\
+	CGO_ENABLED=0 GOOS="$(BUILD_OS)" GOARCH="$(BUILD_ARCH)" go build -o "$(TARGET_BIN_DIR)"/promdump ./cmd
+
+.PHONY: streaming
+streaming: test-streaming
+	cd streaming ;\
+	CGO_ENABLED=0 GOOS="$(BUILD_OS)" GOARCH="$(BUILD_ARCH)" go build -o "$(TARGET_BIN_DIR)"/promdump-streaming ./cmd
 
 .PHONY: cli
-cli:
-	rm -f ./cli
+cli: test-cli
+	cd cli ;\
 	git_commit="$$(git rev-parse --short HEAD)" ;\
-	CGO_ENABLED=0 GOOS="$(BUILD_OS)" GOARCH="$(BUILD_ARCH)" go build -ldflags="-X 'main.Version=$${git_commit}'" ./cmd/cli
+	CGO_ENABLED=0 GOOS="$(BUILD_OS)" GOARCH="$(BUILD_ARCH)" go build -ldflags="-X 'main.Version=$${git_commit}'" -o "$(TARGET_BIN_DIR)"/promdump-cli ./cmd
 
-.PHONY: promdump
-promdump:
-	rm -f ./promdump
-	CGO_ENABLED=0 GOOS="$(BUILD_OS)" GOARCH="$(BUILD_ARCH)" go build -o promdump ./cmd/dump
-
-promdump_deploy: promdump
+promdump_deploy: core
 	target_pod="$$(kubectl -n "$(TARGET_NAMESPACE)" get po -oname | awk -F'/' '{print $$2}')" ;\
 	kubectl -n "$(TARGET_NAMESPACE)" cp promdump "$${target_pod}:$(TARGET_DIR)"
 

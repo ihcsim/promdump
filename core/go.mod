@@ -1,15 +1,15 @@
-module github.com/ihcsim/promdump
+module github.com/ihcsim/promdump/core
 
 go 1.14
 
 require (
 	github.com/go-kit/kit v0.10.0
-	k8s.io/client-go v0.20.5
-	k8s.io/cri-api v0.20.5
-	k8s.io/kubernetes v1.20.5
+	github.com/ihcsim/promdump v0.0.0
+	github.com/prometheus/prometheus v1.8.2-0.20201015110737-0a7fdd3b7696
 )
 
 replace (
+	github.com/ihcsim/promdump => ../
 	k8s.io/api => k8s.io/api v0.20.5
 	k8s.io/apiextensions-apiserver => k8s.io/apiextensions-apiserver v0.20.5
 	k8s.io/apimachinery => k8s.io/apimachinery v0.20.5

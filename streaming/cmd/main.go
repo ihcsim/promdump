@@ -6,8 +6,8 @@ import (
 
 	"github.com/ihcsim/promdump/pkg/log"
 	"github.com/ihcsim/promdump/pkg/runtime"
-	"github.com/ihcsim/promdump/pkg/server"
-	"k8s.io/kubernetes/pkg/kubelet/cri/streaming"
+	"github.com/ihcsim/promdump/pkg/streaming"
+	k8sstream "k8s.io/kubernetes/pkg/kubelet/cri/streaming"
 )
 
 var logger = log.New(os.Stderr)
@@ -15,11 +15,11 @@ var logger = log.New(os.Stderr)
 func main() {
 	var (
 		addr    = ":5078"
-		config  = streaming.DefaultConfig
+		config  = k8sstream.DefaultConfig
 		runtime = runtime.New()
 	)
 
-	server, err := server.New(addr, config, runtime, logger)
+	streaming, err := streaming.New(addr, config, runtime, logger)
 	if err != nil {
 		exit(err)
 	}
@@ -28,10 +28,10 @@ func main() {
 	signal.Notify(kill, os.Kill, os.Interrupt)
 	go func() {
 		<-kill
-		server.Stop()
+		streaming.Stop()
 	}()
 
-	logger.Log("error", server.Start())
+	logger.Log("error", streaming.Start())
 }
 
 func exit(err error) {
