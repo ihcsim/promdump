@@ -3,7 +3,10 @@ package main
 import (
 	"fmt"
 	"os"
+	"path/filepath"
+	"time"
 
+	"github.com/ihcsim/promdump/pkg/log"
 	"github.com/spf13/cobra"
 	corev1 "k8s.io/api/core/v1"
 	k8scliopts "k8s.io/cli-runtime/pkg/genericclioptions"
@@ -12,7 +15,18 @@ import (
 	"k8s.io/client-go/tools/remotecommand"
 )
 
-var Version = "unknown"
+const timeFormat = "2006-01-02 15:04:05"
+
+var (
+	defaultKubeConfig = filepath.Join("~", ".kube", "config")
+	defaultStartTime  = time.Now()
+	defaultEndTime    = defaultStartTime.Add(-1 * time.Hour)
+
+	logger = log.New(os.Stderr).With("component", "cli")
+
+	// Version is the version of the CLI, set during build time
+	Version = "unknown"
+)
 
 func initRootCmd() (*cobra.Command, error) {
 	var (
@@ -57,6 +71,7 @@ func initRootCmd() (*cobra.Command, error) {
 	k8sConfigFlags.AddFlags(rootCmd.PersistentFlags())
 
 	rootCmd.PersistentFlags().StringP("prometheus-pod", "p", "", "targeted Prometheus pod name")
+	rootCmd.PersistentFlags().StringP("prometheus-container", "c", "prometheus", "targeted Prometheus container name")
 	rootCmd.Flags().String("start-time", defaultStartTime.Format(timeFormat), "start time (UTC) of the samples (yyyy-mm-dd hh:mm:ss)")
 	rootCmd.Flags().String("end-time", defaultEndTime.Format(timeFormat), "end time (UTC) of the samples (yyyy-mm-dd hh:mm:ss")
 
@@ -71,22 +86,37 @@ func validate(args []string) error {
 }
 
 func execToPod(k8s *kubernetes.Clientset) error {
-	promNS := _config.GetString("namespace")
-	promPod := _config.GetString("pod")
-	promContainer := _config.GetString("container")
+	var (
+		promNS         = _config.GetString("namespace")
+		promPod        = _config.GetString("prometheus-pod")
+		promContainer  = _config.GetString("prometheus-container")
+		requestTimeout = _config.GetDuration("request-timeout")
+		startTime      = _config.GetTime("start-time")
+		endTime        = _config.GetTime("end-time")
+
+		stdin  = true
+		stdout = true
+		stderr = true
+		tty    = true
+	)
+
+	logger.Log("message", "exec into Prometheus pod",
+		"namespace", promNS,
+		"pod", promPod,
+		"container", promContainer,
+		"start-time", startTime,
+		"end-time", endTime)
+
 	execRequest := k8s.CoreV1().RESTClient().Post().
 		Resource("pods").
-		Name(promNS).
-		Namespace(promPod).
-		SubResource("exec")
+		Namespace(promNS).
+		Name(promPod).
+		SubResource("exec").
+		Timeout(requestTimeout)
 
-	stdin := true
-	stdout := true
-	stderr := true
-	tty := true
 	execRequest.VersionedParams(&corev1.PodExecOptions{
 		Container: promContainer,
-		Command:   []string{"ls"},
+		Command:   []string{"/bin/sh"},
 		Stdin:     stdin,
 		Stdout:    stdout,
 		Stderr:    stderr,

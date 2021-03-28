@@ -11,14 +11,13 @@ import (
 	"strings"
 	"time"
 
-	kitlog "github.com/go-kit/kit/log"
 	"github.com/ihcsim/promdump/pkg/log"
 	"github.com/prometheus/prometheus/tsdb"
 )
 
 const targetDir = "/tmp"
 
-var logger = log.New(os.Stderr)
+var logger = log.New(os.Stderr).With("component", "core")
 
 func main() {
 	var (
@@ -63,7 +62,7 @@ func main() {
 		}
 
 		if b.MaxTime() <= *maxTime || b.MinTime() >= *minTime {
-			blogger := kitlog.With(logger, "block", b.Dir())
+			blogger := logger.With("block", b.Dir())
 			err := filepath.Walk(b.Dir(), func(path string, info os.FileInfo, err error) error {
 				if err != nil {
 					return err
@@ -87,7 +86,7 @@ func main() {
 				}
 
 				fnameIndex := strings.Index(path, b.Dir()) + len(b.Dir()) + 1
-				flogger := kitlog.With(blogger, "file", path[fnameIndex:])
+				fslogger := blogger.With("file", path[fnameIndex:])
 				if err := writeHeader(tar.TypeReg); err != nil {
 					return err
 				}
@@ -109,7 +108,7 @@ func main() {
 					return fmt.Errorf("failed to write compressed file: %w", err)
 				}
 
-				flogger.Log("numBytesRead", numBytesRead,
+				fslogger.Log("numBytesRead", numBytesRead,
 					"numBytesCompressed", numBytesCompressed)
 				return nil
 			})

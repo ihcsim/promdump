@@ -10,7 +10,7 @@ import (
 	k8sstream "k8s.io/kubernetes/pkg/kubelet/cri/streaming"
 )
 
-var logger = log.New(os.Stderr)
+var logger = log.New(os.Stderr).With("component", "streaming")
 
 func main() {
 	var (

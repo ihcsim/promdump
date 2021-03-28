@@ -3,7 +3,6 @@ module github.com/ihcsim/promdump/core
 go 1.14
 
 require (
-	github.com/go-kit/kit v0.10.0
 	github.com/ihcsim/promdump v0.0.0
 	github.com/prometheus/prometheus v1.8.2-0.20201015110737-0a7fdd3b7696
 )
