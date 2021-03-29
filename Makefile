@@ -21,6 +21,11 @@ test: test-core test-streaming test-cli
 test-%:
 	cd ./$* && go test -race ./...
 
+tidy: tidy-core tidy-streaming tidy-cli
+
+tidy-%:
+	cd ./$* && go mod tidy
+
 .PHONY: core
 core: test-core
 	cd core ;\

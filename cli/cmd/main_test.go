@@ -6,29 +6,39 @@ import (
 	"reflect"
 	"testing"
 
+	"github.com/ihcsim/promdump/pkg/config"
 	"github.com/spf13/cobra"
 	"github.com/spf13/pflag"
 )
 
 func TestInitConfig(t *testing.T) {
+	var (
+		configFixture *config.Config
+		err           error
+	)
+
 	rootCmd, err := initRootCmd()
 	if err != nil {
 		t.Fatal("unexpected error: ", err)
 	}
-	rootCmd.SetOutput(ioutil.Discard)
 	rootCmd.PersistentPreRunE = func(cmd *cobra.Command, args []string) error {
-		return initConfig(nil, rootCmd.Flags())
-	}
-	rootCmd.RunE = func(cmd *cobra.Command, args []string) error {
-		// omit running the streaming function
+		configFixture, err = config.FromFlagSet(cmd.Flags())
+		if err != nil {
+			return fmt.Errorf("failed to init viper config: %w", err)
+		}
 		return nil
 	}
+	rootCmd.RunE = func(cmd *cobra.Command, args []string) error {
+		return nil // omit irrelevant streaming function
+	}
+	rootCmd.SetOutput(ioutil.Discard)
 
 	// parse flags
 	if err := rootCmd.Execute(); err != nil {
 		t.Fatal("unexpected error: ", err)
 	}
 
+	// construct the CLI arguments
 	var args []string
 	rootCmd.Flags().VisitAll(func(f *pflag.Flag) {
 		if skipFlag(f) {
@@ -51,7 +61,7 @@ func TestInitConfig(t *testing.T) {
 
 		t.Run(f.Name, func(t *testing.T) {
 			expected := expectedValue(f, t)
-			if actual := _config.Get(f.Name); !reflect.DeepEqual(expected, actual) {
+			if actual := configFixture.Get(f.Name); !reflect.DeepEqual(expected, actual) {
 				t.Errorf("mismatch config: %s. expected: %v (%T), actual: %v (%T)", f.Name, expected, expected, actual, actual)
 			}
 		})

@@ -6,6 +6,7 @@ import (
 	"github.com/go-kit/kit/log"
 )
 
+// Logger encapsulates the underlying logging library.
 type Logger struct {
 	log.Logger
 }
