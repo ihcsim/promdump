@@ -34,7 +34,7 @@ func main() {
 		"maxTime", time.Unix(*maxTime, 0),
 		"minTime", time.Unix(*minTime, 0))
 
-	db, err := tsdb.OpenDBReadOnly(*dataDir, logger)
+	db, err := tsdb.OpenDBReadOnly(*dataDir, logger.Logger)
 	if err != nil {
 		exit(err)
 	}

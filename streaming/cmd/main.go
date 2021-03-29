@@ -19,16 +19,18 @@ func main() {
 		runtime = runtime.New()
 	)
 
-	streaming, err := streaming.New(addr, config, runtime, logger)
+	streaming, err := streaming.New(addr, config, runtime, logger.Logger)
 	if err != nil {
 		exit(err)
 	}
 
 	kill := make(chan os.Signal, 1)
-	signal.Notify(kill, os.Kill, os.Interrupt)
+	signal.Notify(kill, os.Interrupt)
 	go func() {
 		<-kill
-		streaming.Stop()
+		if err := streaming.Stop(); err != nil {
+			logger.Log("error", err)
+		}
 	}()
 
 	logger.Log("error", streaming.Start())

@@ -8,20 +8,26 @@ BASE_DIR = "$(shell pwd)"
 TARGET_DIR = "$(BASE_DIR)"/target
 TARGET_BIN_DIR = "$(TARGET_DIR)"/bin
 
-all: test build
+all: test lint build
 
 build: prebuild core streaming cli
 prebuild:
 	rm -rf ./target/bin
 	mkdir -p ./target/bin
 
+.PHONY: test
 test: test-core test-streaming test-cli
 	go test -race ./...
 
 test-%:
 	cd ./$* && go test -race ./...
 
-tidy: tidy-core tidy-streaming tidy-cli
+lint-%:
+	cd ./$* && golangci-lint run
+
+lint: lint-core lint-streaming lint-cli
+
+tidy: tidy-core tidy-streaming tidy-cli test
 
 tidy-%:
 	cd ./$* && go mod tidy

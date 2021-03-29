@@ -3,7 +3,6 @@ package streaming
 import (
 	"context"
 	"encoding/json"
-	"fmt"
 	"net/http"
 	"time"
 
@@ -175,16 +174,4 @@ func (s *Server) streamingURL(resp http.ResponseWriter, req *http.Request, respo
 	}
 
 	responseCode, responseBody = http.StatusOK, string(data)
-}
-
-func handleErrs(errChan <-chan error) error {
-	if len(errChan) > 0 {
-		var errs error
-		for err := range errChan {
-			errs = fmt.Errorf("%s\n%s", errs, err)
-		}
-		return errs
-	}
-
-	return nil
 }

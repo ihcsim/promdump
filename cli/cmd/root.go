@@ -2,7 +2,6 @@ package main
 
 import (
 	"fmt"
-	"path/filepath"
 	"time"
 
 	"github.com/ihcsim/promdump/pkg/config"
@@ -14,9 +13,8 @@ import (
 const timeFormat = "2006-01-02 15:04:05"
 
 var (
-	defaultKubeConfig = filepath.Join("~", ".kube", "config")
-	defaultStartTime  = time.Now()
-	defaultEndTime    = defaultStartTime.Add(-1 * time.Hour)
+	defaultStartTime = time.Now()
+	defaultEndTime   = defaultStartTime.Add(-1 * time.Hour)
 
 	// Version is the version of the CLI, set during build time
 	Version = "unknown"
@@ -71,8 +69,10 @@ func initRootCmd() (*cobra.Command, error) {
 	rootCmd.Flags().String("start-time", defaultStartTime.Format(timeFormat), "start time (UTC) of the samples (yyyy-mm-dd hh:mm:ss)")
 	rootCmd.Flags().String("end-time", defaultEndTime.Format(timeFormat), "end time (UTC) of the samples (yyyy-mm-dd hh:mm:ss")
 
-	rootCmd.MarkFlagRequired("pod")
 	rootCmd.Flags().SortFlags = false
+	if err := rootCmd.MarkPersistentFlagRequired("prometheus-pod"); err != nil {
+		return nil, err
+	}
 
 	return rootCmd, nil
 }
