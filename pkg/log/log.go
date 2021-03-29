@@ -30,7 +30,9 @@ func (l *Logger) With(keyvals ...interface{}) *Logger {
 	return l
 }
 
-// Log wraps the underlying Log() function and handles any errors returned.
+// Log wraps the underlying Log() function and collects any errors returned
+// by the wrapped function. Caller of logger decides how to handle the collectedi
+// errors.
 func (l *Logger) Log(keyvals ...interface{}) {
 	l.mux.Lock()
 	defer l.mux.Unlock()

@@ -11,61 +11,71 @@ import (
 	"github.com/spf13/pflag"
 )
 
-func TestInitConfig(t *testing.T) {
-	var (
-		configFixture *config.Config
-		err           error
-	)
+var (
+	cmdFixture    *cobra.Command
+	configFixture *config.Config
+)
 
-	rootCmd, err := initRootCmd()
-	if err != nil {
+func TestConfigFromFlagset(t *testing.T) {
+	if err := initFixtures(); err != nil {
 		t.Fatal("unexpected error: ", err)
 	}
-	rootCmd.PersistentPreRunE = func(cmd *cobra.Command, args []string) error {
+
+	if err := cmdFixture.Execute(); err != nil {
+		t.Fatal("unexpected error: ", err)
+	}
+
+	args := buildArgsFromFlags(cmdFixture, t)
+	cmdFixture.SetArgs(args)
+
+	if err := cmdFixture.Execute(); err != nil {
+		t.Fatal("unexpected error: ", err)
+	}
+
+	assertConfig(cmdFixture, configFixture, t)
+}
+
+func initFixtures() error {
+	var err error
+	cmdFixture, err = initRootCmd()
+	if err != nil {
+		return err
+	}
+
+	cmdFixture.PersistentPreRunE = func(cmd *cobra.Command, args []string) error {
 		configFixture, err = config.FromFlagSet(cmd.Flags())
 		if err != nil {
 			return fmt.Errorf("failed to init viper config: %w", err)
 		}
+
 		return nil
 	}
-	rootCmd.RunE = func(cmd *cobra.Command, args []string) error {
+
+	cmdFixture.RunE = func(cmd *cobra.Command, args []string) error {
 		return nil // omit irrelevant streaming function
 	}
-	rootCmd.SetOutput(ioutil.Discard)
 
-	// parse flags
-	if err := rootCmd.Execute(); err != nil {
-		t.Fatal("unexpected error: ", err)
+	// preset required fields with no default value
+	if err := cmdFixture.PersistentFlags().Set("prometheus-pod", "test-pod"); err != nil {
+		return err
 	}
 
+	cmdFixture.SetOutput(ioutil.Discard)
+	return nil
+}
+
+func buildArgsFromFlags(cmd *cobra.Command, t *testing.T) []string {
 	// construct the CLI arguments
 	var args []string
-	rootCmd.Flags().VisitAll(func(f *pflag.Flag) {
+	cmd.Flags().VisitAll(func(f *pflag.Flag) {
 		if skipFlag(f) {
 			return
 		}
 
 		args = append(args, testArgs(f, t)...)
 	})
-	rootCmd.SetArgs(args)
 
-	// execute command with new args
-	if err := rootCmd.Execute(); err != nil {
-		t.Fatal("unexpected error: ", err)
-	}
-
-	rootCmd.Flags().VisitAll(func(f *pflag.Flag) {
-		if skipFlag(f) {
-			return
-		}
-
-		t.Run(f.Name, func(t *testing.T) {
-			expected := expectedValue(f, t)
-			if actual := configFixture.Get(f.Name); !reflect.DeepEqual(expected, actual) {
-				t.Errorf("mismatch config: %s. expected: %v (%T), actual: %v (%T)", f.Name, expected, expected, actual, actual)
-			}
-		})
-	})
+	return args
 }
 
 func skipFlag(f *pflag.Flag) bool {
@@ -91,6 +101,21 @@ func testArgs(f *pflag.Flag, t *testing.T) []string {
 	}
 
 	return args
+}
+
+func assertConfig(cmd *cobra.Command, appConfig *config.Config, t *testing.T) {
+	cmd.Flags().VisitAll(func(f *pflag.Flag) {
+		if skipFlag(f) {
+			return
+		}
+
+		t.Run(f.Name, func(t *testing.T) {
+			expected := expectedValue(f, t)
+			if actual := appConfig.Get(f.Name); !reflect.DeepEqual(expected, actual) {
+				t.Errorf("mismatch config: %s. expected: %v (%T), actual: %v (%T)", f.Name, expected, expected, actual, actual)
+			}
+		})
+	})
 }
 
 func expectedValue(f *pflag.Flag, t *testing.T) interface{} {
