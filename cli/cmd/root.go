@@ -27,11 +27,12 @@ func initRootCmd() (*cobra.Command, error) {
 	)
 
 	rootCmd := &cobra.Command{
-		Use:     "promdump",
-		Example: "",
-		Short:   "A tool to dump Prometheus tsdb samples within a time range",
-		Long:    ``,
-		Version: Version,
+		Use:          "promdump",
+		Example:      "",
+		Short:        "A tool to dump Prometheus tsdb samples within a time range",
+		Long:         ``,
+		Version:      Version,
+		SilenceUsage: true,
 		RunE: func(cmd *cobra.Command, args []string) error {
 			if err := validate(cmd); err != nil {
 				return fmt.Errorf("validation failed: %w", err)
