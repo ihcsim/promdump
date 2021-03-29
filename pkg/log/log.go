@@ -26,7 +26,7 @@ func New(out io.Writer) *Logger {
 // With returns a new contextual logger with keyvals prepended to those passed
 // to calls to Log. See https://pkg.go.dev/github.com/go-kit/kit/log#With
 func (l *Logger) With(keyvals ...interface{}) *Logger {
-	l.Logger = log.With(l.Logger, keyvals)
+	l.Logger = log.With(l.Logger, keyvals...)
 	return l
 }
 
@@ -34,10 +34,9 @@ func (l *Logger) With(keyvals ...interface{}) *Logger {
 // by the wrapped function. Caller of logger decides how to handle the collectedi
 // errors.
 func (l *Logger) Log(keyvals ...interface{}) {
-	l.mux.Lock()
-	defer l.mux.Unlock()
-
-	if err := l.Logger.Log(keyvals); err != nil {
+	if err := l.Logger.Log(keyvals...); err != nil {
+		l.mux.Lock()
+		defer l.mux.Unlock()
 		l.errs = append(l.errs, err)
 	}
 }

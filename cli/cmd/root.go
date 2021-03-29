@@ -7,7 +7,10 @@ import (
 	"github.com/ihcsim/promdump/pkg/config"
 	"github.com/ihcsim/promdump/pkg/k8s"
 	"github.com/spf13/cobra"
+	"github.com/spf13/pflag"
 	k8scliopts "k8s.io/cli-runtime/pkg/genericclioptions"
+	"k8s.io/client-go/rest"
+	"k8s.io/client-go/tools/clientcmd"
 )
 
 const timeFormat = "2006-01-0215:04:05"
@@ -47,7 +50,7 @@ func initRootCmd() (*cobra.Command, error) {
 				return fmt.Errorf("failed to init viper config: %w", err)
 			}
 
-			k8sConfig, err := k8sConfigFlags.ToRawKubeConfigLoader().ClientConfig()
+			k8sConfig, err := k8sConfig(k8sConfigFlags, cmd.Flags())
 			if err != nil {
 				return fmt.Errorf("failed to init k8s config: %w", err)
 			}
@@ -62,16 +65,16 @@ func initRootCmd() (*cobra.Command, error) {
 	}
 
 	// add default k8s client flags
-	k8sConfigFlags = k8scliopts.NewConfigFlags(false)
+	k8sConfigFlags = k8scliopts.NewConfigFlags(true)
 	k8sConfigFlags.AddFlags(rootCmd.PersistentFlags())
 
-	rootCmd.PersistentFlags().StringP("prometheus-pod", "p", "", "targeted Prometheus pod name")
-	rootCmd.PersistentFlags().StringP("prometheus-container", "c", "prometheus", "targeted Prometheus container name")
+	rootCmd.PersistentFlags().StringP("pod", "p", "", "targeted Prometheus pod name")
+	rootCmd.PersistentFlags().StringP("container", "c", "prometheus", "targeted Prometheus container name")
 	rootCmd.Flags().String("start-time", defaultStartTime.Format(timeFormat), "start time (UTC) of the samples (yyyy-mm-ddhh:mm:ss)")
 	rootCmd.Flags().String("end-time", defaultEndTime.Format(timeFormat), "end time (UTC) of the samples (yyyy-mm-ddhh:mm:ss")
 
 	rootCmd.Flags().SortFlags = false
-	if err := rootCmd.MarkPersistentFlagRequired("prometheus-pod"); err != nil {
+	if err := rootCmd.MarkPersistentFlagRequired("pod"); err != nil {
 		return nil, err
 	}
 
@@ -105,4 +108,45 @@ func validate(cmd *cobra.Command) error {
 	}
 
 	return nil
+}
+
+func k8sConfig(k8sConfigFlags *k8scliopts.ConfigFlags, fs *pflag.FlagSet) (*rest.Config, error) {
+	// read from CLI flags first
+	// then if empty, load defaults from config loader
+	currentContext, err := fs.GetString("context")
+	if err != nil {
+		return nil, err
+	}
+
+	timeout, err := fs.GetString("request-timeout")
+	if err != nil {
+		return nil, err
+	}
+
+	configLoader := k8sConfigFlags.ToRawKubeConfigLoader()
+	if currentContext == "" {
+		rawConfig, err := configLoader.RawConfig()
+		if err != nil {
+			return nil, err
+		}
+		currentContext = rawConfig.CurrentContext
+	}
+
+	if timeout == "" {
+		clientConfig, err := configLoader.ClientConfig()
+		if err != nil {
+			return nil, err
+		}
+		timeout = clientConfig.Timeout.String()
+	}
+
+	return clientcmd.NewNonInteractiveDeferredLoadingClientConfig(
+		&clientcmd.ClientConfigLoadingRules{
+			ExplicitPath:     configLoader.ConfigAccess().GetDefaultFilename(),
+			WarnIfAllMissing: true,
+		},
+		&clientcmd.ConfigOverrides{
+			CurrentContext: currentContext,
+			Timeout:        timeout,
+		}).ClientConfig()
 }

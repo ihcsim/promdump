@@ -56,7 +56,7 @@ func initFixtures() error {
 	}
 
 	// preset required fields with no default value
-	if err := cmdFixture.PersistentFlags().Set("prometheus-pod", "test-pod"); err != nil {
+	if err := cmdFixture.PersistentFlags().Set("pod", "test-pod"); err != nil {
 		return err
 	}
 
