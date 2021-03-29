@@ -10,7 +10,7 @@ import (
 	k8scliopts "k8s.io/cli-runtime/pkg/genericclioptions"
 )
 
-const timeFormat = "2006-01-02 15:04:05"
+const timeFormat = "2006-01-0215:04:05"
 
 var (
 	defaultStartTime = time.Now()
@@ -33,7 +33,7 @@ func initRootCmd() (*cobra.Command, error) {
 		Long:    ``,
 		Version: Version,
 		RunE: func(cmd *cobra.Command, args []string) error {
-			if err := validate(args); err != nil {
+			if err := validate(cmd); err != nil {
 				return fmt.Errorf("validation failed: %w", err)
 			}
 
@@ -66,8 +66,8 @@ func initRootCmd() (*cobra.Command, error) {
 
 	rootCmd.PersistentFlags().StringP("prometheus-pod", "p", "", "targeted Prometheus pod name")
 	rootCmd.PersistentFlags().StringP("prometheus-container", "c", "prometheus", "targeted Prometheus container name")
-	rootCmd.Flags().String("start-time", defaultStartTime.Format(timeFormat), "start time (UTC) of the samples (yyyy-mm-dd hh:mm:ss)")
-	rootCmd.Flags().String("end-time", defaultEndTime.Format(timeFormat), "end time (UTC) of the samples (yyyy-mm-dd hh:mm:ss")
+	rootCmd.Flags().String("start-time", defaultStartTime.Format(timeFormat), "start time (UTC) of the samples (yyyy-mm-ddhh:mm:ss)")
+	rootCmd.Flags().String("end-time", defaultEndTime.Format(timeFormat), "end time (UTC) of the samples (yyyy-mm-ddhh:mm:ss")
 
 	rootCmd.Flags().SortFlags = false
 	if err := rootCmd.MarkPersistentFlagRequired("prometheus-pod"); err != nil {
@@ -77,6 +77,31 @@ func initRootCmd() (*cobra.Command, error) {
 	return rootCmd, nil
 }
 
-func validate(args []string) error {
+func validate(cmd *cobra.Command) error {
+	const errPrefix = "flag validation failed"
+	argStartTime, err := cmd.Flags().GetString("start-time")
+	if err != nil {
+		return fmt.Errorf("%s: %w", errPrefix, err)
+	}
+
+	argEndTime, err := cmd.Flags().GetString("end-time")
+	if err != nil {
+		return fmt.Errorf("%s: %w", errPrefix, err)
+	}
+
+	startTime, err := time.Parse(timeFormat, argStartTime)
+	if err != nil {
+		return fmt.Errorf("%s: %w", errPrefix, err)
+	}
+
+	endTime, err := time.Parse(timeFormat, argEndTime)
+	if err != nil {
+		return fmt.Errorf("%s: %w", errPrefix, err)
+	}
+
+	if startTime.After(endTime) {
+		return fmt.Errorf("invalid time range %s-%s: start time must occur before end time", argStartTime, argEndTime)
+	}
+
 	return nil
 }
