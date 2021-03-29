@@ -13,7 +13,7 @@ import (
 	"k8s.io/client-go/tools/clientcmd"
 )
 
-const timeFormat = "2006-01-0215:04:05"
+const timeFormat = "2006-01-02 15:04:05"
 
 var (
 	defaultStartTime = time.Now()
@@ -30,12 +30,13 @@ func initRootCmd() (*cobra.Command, error) {
 	)
 
 	rootCmd := &cobra.Command{
-		Use:          "promdump",
-		Example:      "",
-		Short:        "A tool to dump Prometheus tsdb samples within a time range",
-		Long:         ``,
-		Version:      Version,
-		SilenceUsage: true,
+		Use:           "promdump",
+		Example:       "",
+		Short:         "A tool to dump Prometheus tsdb samples within a time range",
+		Long:          ``,
+		Version:       Version,
+		SilenceErrors: true, // let main() handles errors
+		SilenceUsage:  true,
 		RunE: func(cmd *cobra.Command, args []string) error {
 			if err := validate(cmd); err != nil {
 				return fmt.Errorf("validation failed: %w", err)
@@ -70,8 +71,8 @@ func initRootCmd() (*cobra.Command, error) {
 
 	rootCmd.PersistentFlags().StringP("pod", "p", "", "targeted Prometheus pod name")
 	rootCmd.PersistentFlags().StringP("container", "c", "prometheus", "targeted Prometheus container name")
-	rootCmd.Flags().String("start-time", defaultStartTime.Format(timeFormat), "start time (UTC) of the samples (yyyy-mm-ddhh:mm:ss)")
-	rootCmd.Flags().String("end-time", defaultEndTime.Format(timeFormat), "end time (UTC) of the samples (yyyy-mm-ddhh:mm:ss")
+	rootCmd.Flags().String("start-time", defaultStartTime.Format(timeFormat), "start time (UTC) of the samples (yyyy-mm-dd hh:mm:ss)")
+	rootCmd.Flags().String("end-time", defaultEndTime.Format(timeFormat), "end time (UTC) of the samples (yyyy-mm-dd hh:mm:ss")
 
 	rootCmd.Flags().SortFlags = false
 	if err := rootCmd.MarkPersistentFlagRequired("pod"); err != nil {
@@ -104,7 +105,7 @@ func validate(cmd *cobra.Command) error {
 	}
 
 	if startTime.After(endTime) {
-		return fmt.Errorf("invalid time range %s-%s: start time must occur before end time", argStartTime, argEndTime)
+		return fmt.Errorf("invalid time range. start time (%s) must occur before end time (%s).", argStartTime, argEndTime)
 	}
 
 	return nil
