@@ -42,6 +42,10 @@ func initRootCmd() (*cobra.Command, error) {
 				return fmt.Errorf("validation failed: %w", err)
 			}
 
+			if err := clientset.CanExec(); err != nil {
+				return fmt.Errorf("exec operation denied: %w", err)
+			}
+
 			execCmd := []string{"/bin/sh"}
 			return clientset.ExecPod(execCmd)
 		},

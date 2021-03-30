@@ -1,10 +1,13 @@
 package k8s
 
 import (
+	"context"
 	"fmt"
 	"os"
 
+	authzv1 "k8s.io/api/authorization/v1"
 	corev1 "k8s.io/api/core/v1"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/client-go/kubernetes/scheme"
 	"k8s.io/client-go/tools/remotecommand"
 )
@@ -61,6 +64,49 @@ func (c *Clientset) ExecPod(command []string) error {
 		Tty:    tty,
 	}); err != nil {
 		return fmt.Errorf("failed to exec command: %w", err)
+	}
+
+	return nil
+}
+
+// CanExec determines if the current user can create a exec subresource in the
+// given pod.
+func (c *Clientset) CanExec() error {
+	var (
+		ns      = c.config.GetString("namespace")
+		timeout = c.config.GetDuration("request-timeout")
+	)
+	selfAccessReview := &authzv1.SelfSubjectAccessReview{
+		Spec: authzv1.SelfSubjectAccessReviewSpec{
+			ResourceAttributes: &authzv1.ResourceAttributes{
+				Namespace:   ns,
+				Verb:        "create",
+				Group:       "",
+				Resource:    "pods",
+				Subresource: "exec",
+				Name:        "",
+			},
+		},
+	}
+
+	ctx, cancel := context.WithTimeout(context.Background(), timeout)
+	defer cancel()
+
+	response, err := c.AuthorizationV1().SelfSubjectAccessReviews().Create(ctx, selfAccessReview, metav1.CreateOptions{})
+	if err != nil {
+		return err
+	}
+
+	if !response.Status.Allowed {
+		msg := fmt.Sprintf("no permission to create pods/exec subresource in namespace:%s. ", ns)
+		if response.Status.Reason != "" {
+			msg += response.Status.Reason
+		}
+
+		if response.Status.EvaluationError != "" {
+			msg += response.Status.EvaluationError
+		}
+		return fmt.Errorf(msg)
 	}
 
 	return nil
