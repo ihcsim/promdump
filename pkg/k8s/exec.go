@@ -3,18 +3,22 @@ package k8s
 import (
 	"context"
 	"fmt"
-	"os"
+	"io"
+	"net/url"
 
 	authzv1 "k8s.io/api/authorization/v1"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/client-go/kubernetes/scheme"
+	"k8s.io/client-go/rest"
 	"k8s.io/client-go/tools/remotecommand"
 )
 
+var deniedCreateExecErr = fmt.Errorf("no permissions to create exec subresource")
+
 // ExecPod issues an exec request to execute the given command to a particular
 // pod.
-func (c *Clientset) ExecPod(command []string) error {
+func (c *Clientset) ExecPod(command []string, stdin io.Reader, stdout, stderr io.Writer, tty bool) error {
 	var (
 		ns             = c.config.GetString("namespace")
 		pod            = c.config.GetString("pod")
@@ -22,11 +26,6 @@ func (c *Clientset) ExecPod(command []string) error {
 		requestTimeout = c.config.GetDuration("request-timeout")
 		startTime      = c.config.GetTime("start-time")
 		endTime        = c.config.GetTime("end-time")
-
-		stdin  = true
-		stdout = true
-		stderr = true
-		tty    = true
 	)
 
 	c.logger.Log("message", "sending exec request",
@@ -43,24 +42,24 @@ func (c *Clientset) ExecPod(command []string) error {
 		SubResource("exec").
 		Timeout(requestTimeout)
 
-	execRequest.VersionedParams(&corev1.PodExecOptions{
+	execRequest = execRequest.VersionedParams(&corev1.PodExecOptions{
 		Container: container,
-		Command:   []string{"/bin/sh"},
-		Stdin:     stdin,
-		Stdout:    stdout,
-		Stderr:    stderr,
+		Command:   command,
+		Stdin:     stdin != nil,
+		Stdout:    stdout != nil,
+		Stderr:    stderr != nil,
 		TTY:       tty,
 	}, scheme.ParameterCodec)
 
-	exec, err := remotecommand.NewSPDYExecutor(c.k8sConfig, "POST", execRequest.URL())
+	exec, err := newExecutor(c.k8sConfig, "POST", execRequest.URL())
 	if err != nil {
 		return fmt.Errorf("failed to set up executor: %w", err)
 	}
 
 	if err := exec.Stream(remotecommand.StreamOptions{
-		Stdin:  os.Stdin,
-		Stdout: os.Stdout,
-		Stderr: os.Stderr,
+		Stdin:  stdin,
+		Stdout: stdout,
+		Stderr: stderr,
 		Tty:    tty,
 	}); err != nil {
 		return fmt.Errorf("failed to exec command: %w", err)
@@ -98,16 +97,15 @@ func (c *Clientset) CanExec() error {
 	}
 
 	if !response.Status.Allowed {
-		msg := fmt.Sprintf("no permission to create pods/exec subresource in namespace:%s. ", ns)
 		if response.Status.Reason != "" {
-			msg += response.Status.Reason
+			return fmt.Errorf("%w. reason: %s", deniedCreateExecErr, response.Status.Reason)
 		}
-
-		if response.Status.EvaluationError != "" {
-			msg += response.Status.EvaluationError
-		}
-		return fmt.Errorf(msg)
+		return deniedCreateExecErr
 	}
 
 	return nil
+}
+
+var newExecutor = func(config *rest.Config, method string, url *url.URL) (remotecommand.Executor, error) {
+	return remotecommand.NewSPDYExecutor(config, method, url)
 }

@@ -2,6 +2,8 @@ package main
 
 import (
 	"fmt"
+	"io"
+	"os"
 	"time"
 
 	"github.com/ihcsim/promdump/pkg/config"
@@ -47,7 +49,8 @@ func initRootCmd() (*cobra.Command, error) {
 			}
 
 			execCmd := []string{"/bin/sh"}
-			return clientset.ExecPod(execCmd)
+			var stdin io.Reader
+			return clientset.ExecPod(execCmd, stdin, os.Stdout, os.Stderr, false)
 		},
 		PersistentPreRunE: func(cmd *cobra.Command, args []string) error {
 			appConfig, err := config.FromFlagSet(cmd.Flags())

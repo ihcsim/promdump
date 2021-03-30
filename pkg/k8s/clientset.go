@@ -15,7 +15,7 @@ type Clientset struct {
 	config    *config.Config
 	k8sConfig *rest.Config
 	logger    *log.Logger
-	*kubernetes.Clientset
+	kubernetes.Interface
 }
 
 // NewClientset returns a new Clientset for the given config.
