@@ -3,12 +3,13 @@ package streaming
 import (
 	"bytes"
 	"fmt"
+	"io/ioutil"
 	"net/http/httptest"
 	"net/url"
 	"regexp"
 	"testing"
 
-	"github.com/go-kit/kit/log"
+	"github.com/ihcsim/promdump/pkg/log"
 	"github.com/ihcsim/promdump/pkg/runtime"
 	"k8s.io/kubernetes/pkg/kubelet/cri/streaming"
 )
@@ -16,7 +17,7 @@ import (
 const testTarget = "http://example.com"
 
 var (
-	testLogger          = log.NewNopLogger()
+	testLogger          = log.New(ioutil.Discard)
 	testStreamingConfig = streaming.DefaultConfig
 
 	attachURLPattern      = fmt.Sprintf(`{"url":"%s/attach/[a-zA-Z0-9_\-]*"}`, testTarget)
@@ -45,7 +46,7 @@ func TestServeAttach(t *testing.T) {
 		},
 	}
 
-	s, err := New("", testStreamingConfig, runtime.New(), testLogger)
+	s, err := New("", testStreamingConfig, runtime.NewContainerd(), testLogger)
 	if err != nil {
 		t.Fatal("unexpected error: ", err)
 	}
@@ -89,7 +90,7 @@ func TestServeExec(t *testing.T) {
 		},
 	}
 
-	s, err := New("", testStreamingConfig, runtime.New(), testLogger)
+	s, err := New("", testStreamingConfig, runtime.NewContainerd(), testLogger)
 	if err != nil {
 		t.Fatal("unexpected error: ", err)
 	}
@@ -133,7 +134,7 @@ func TestPortForward(t *testing.T) {
 		},
 	}
 
-	s, err := New("", testStreamingConfig, runtime.New(), testLogger)
+	s, err := New("", testStreamingConfig, runtime.NewContainerd(), testLogger)
 	if err != nil {
 		t.Fatal("unexpected error: ", err)
 	}

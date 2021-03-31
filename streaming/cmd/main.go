@@ -16,10 +16,10 @@ func main() {
 	var (
 		addr    = ":5078"
 		config  = k8sstream.DefaultConfig
-		runtime = runtime.New()
+		runtime = runtime.NewContainerd()
 	)
 
-	streaming, err := streaming.New(addr, config, runtime, logger.Logger)
+	streaming, err := streaming.New(addr, config, runtime, logger)
 	if err != nil {
 		exit(err)
 	}

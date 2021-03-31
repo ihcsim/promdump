@@ -8,22 +8,27 @@ import (
 
 // Runtime implements the streaming.Runtime interface. It provides the
 // streams for the exec, attach and port-forward commands.
-type Runtime struct {
+type Runtime interface {
+	Exec(containerID string, cmd []string, in io.Reader, out, err io.WriteCloser, tty bool, resize <-chan remotecommand.TerminalSize) error
+	Attach(containerID string, in io.Reader, out, err io.WriteCloser, tty bool, resize <-chan remotecommand.TerminalSize) error
+	PortForward(podSandboxID string, port int32, stream io.ReadWriteCloser) error
 }
 
-// New returns a new instance of Runtime.
-func New() *Runtime {
-	return &Runtime{}
+type containerd struct{}
+
+// NewContainerd returns a new instance of containerd runtime.
+func NewContainerd() Runtime {
+	return &containerd{}
 }
 
-func (r *Runtime) Exec(containerID string, cmd []string, in io.Reader, out, err io.WriteCloser, tty bool, resize <-chan remotecommand.TerminalSize) error {
+func (c *containerd) Exec(containerID string, cmd []string, in io.Reader, out, err io.WriteCloser, tty bool, resize <-chan remotecommand.TerminalSize) error {
 	return nil
 }
 
-func (r *Runtime) Attach(containerID string, in io.Reader, out, err io.WriteCloser, tty bool, resize <-chan remotecommand.TerminalSize) error {
+func (c *containerd) Attach(containerID string, in io.Reader, out, err io.WriteCloser, tty bool, resize <-chan remotecommand.TerminalSize) error {
 	return nil
 }
 
-func (r *Runtime) PortForward(podSandboxID string, port int32, stream io.ReadWriteCloser) error {
+func (c *containerd) PortForward(podSandboxID string, port int32, stream io.ReadWriteCloser) error {
 	return nil
 }

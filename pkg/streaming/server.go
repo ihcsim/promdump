@@ -6,7 +6,7 @@ import (
 	"net/http"
 	"time"
 
-	"github.com/go-kit/kit/log"
+	"github.com/ihcsim/promdump/pkg/log"
 
 	runtimeapi "k8s.io/cri-api/pkg/apis/runtime/v1alpha2"
 	"k8s.io/kubernetes/pkg/kubelet/cri/streaming"
@@ -20,14 +20,14 @@ const (
 // Server exposes a number of HTTP endpoints to support container exec, attach
 // and port-forward functionalities.
 type Server struct {
-	logger      log.Logger
 	exitTimeout time.Duration
+	logger      *log.Logger
+	stream      streaming.Server
 	http.Server
-	stream streaming.Server
 }
 
 // New returns a new instance of Server.
-func New(addr string, config streaming.Config, runtime streaming.Runtime, logger log.Logger) (*Server, error) {
+func New(addr string, config streaming.Config, runtime streaming.Runtime, logger *log.Logger) (*Server, error) {
 	stream, err := streaming.NewServer(config, runtime)
 	if err != nil {
 		return nil, err
@@ -35,7 +35,7 @@ func New(addr string, config streaming.Config, runtime streaming.Runtime, logger
 
 	s := &Server{
 		exitTimeout: defaultExitTimeout,
-		logger:      log.With(logger, "component", "server"),
+		logger:      logger.With("component", "server"),
 		stream:      stream,
 	}
 
@@ -54,13 +54,13 @@ func New(addr string, config streaming.Config, runtime streaming.Runtime, logger
 	return s, nil
 }
 
-// Start
+// Start starts the underlying HTTP server.
 func (s *Server) Start() error {
 	s.logger.Log("status", "starting server", "listenAt", s.Addr)
 	return s.ListenAndServe()
 }
 
-// Stop
+// Stop stops the underlying HTTP server.
 func (s *Server) Stop() error {
 	ctx, cancel := context.WithTimeout(
 		context.Background(), s.exitTimeout)
