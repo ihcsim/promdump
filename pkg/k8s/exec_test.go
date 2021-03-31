@@ -99,5 +99,5 @@ func TestExec(t *testing.T) {
 }
 
 func newFakeExecutor(config *rest.Config, method string, url *url.URL) (remotecommand.Executor, error) {
-	return fake.NewExecutor(url, true), nil
+	return fake.NewExecutor(url), nil
 }
