@@ -18,8 +18,10 @@ import (
 const timeFormat = "2006-01-02 15:04:05"
 
 var (
-	defaultStartTime = time.Now()
-	defaultEndTime   = defaultStartTime.Add(-1 * time.Hour)
+	defaultEndTime        = time.Now()
+	defaultStartTime      = defaultEndTime.Add(-1 * time.Hour)
+	defaultNamespace      = "default"
+	defaultRequestTimeout = "10s"
 
 	// Version is the version of the CLI, set during build time
 	Version = "unknown"
@@ -40,6 +42,10 @@ func initRootCmd() (*cobra.Command, error) {
 		SilenceErrors: true, // let main() handles errors
 		SilenceUsage:  true,
 		RunE: func(cmd *cobra.Command, args []string) error {
+			if err := setMissingDefaults(cmd); err != nil {
+				return fmt.Errorf("can't set missing defaults: %w", err)
+			}
+
 			if err := validate(cmd); err != nil {
 				return fmt.Errorf("validation failed: %w", err)
 			}
@@ -89,26 +95,47 @@ func initRootCmd() (*cobra.Command, error) {
 	return rootCmd, nil
 }
 
+func setMissingDefaults(cmd *cobra.Command) error {
+	ns, err := cmd.Flags().GetString("namespace")
+	if err != nil {
+		return err
+	}
+
+	if ns == "" {
+		ns = defaultNamespace
+	}
+
+	timeout, err := cmd.Flags().GetString("request-timeout")
+	if err != nil {
+		return err
+	}
+
+	if timeout == "0" {
+		timeout = defaultRequestTimeout
+	}
+
+	return nil
+}
+
 func validate(cmd *cobra.Command) error {
-	const errPrefix = "flag validation failed"
 	argStartTime, err := cmd.Flags().GetString("start-time")
 	if err != nil {
-		return fmt.Errorf("%s: %w", errPrefix, err)
+		return err
 	}
 
 	argEndTime, err := cmd.Flags().GetString("end-time")
 	if err != nil {
-		return fmt.Errorf("%s: %w", errPrefix, err)
+		return err
 	}
 
 	startTime, err := time.Parse(timeFormat, argStartTime)
 	if err != nil {
-		return fmt.Errorf("%s: %w", errPrefix, err)
+		return err
 	}
 
 	endTime, err := time.Parse(timeFormat, argEndTime)
 	if err != nil {
-		return fmt.Errorf("%s: %w", errPrefix, err)
+		return err
 	}
 
 	if startTime.After(endTime) {
@@ -126,11 +153,6 @@ func k8sConfig(k8sConfigFlags *k8scliopts.ConfigFlags, fs *pflag.FlagSet) (*rest
 		return nil, err
 	}
 
-	timeout, err := fs.GetString("request-timeout")
-	if err != nil {
-		return nil, err
-	}
-
 	configLoader := k8sConfigFlags.ToRawKubeConfigLoader()
 	if currentContext == "" {
 		rawConfig, err := configLoader.RawConfig()
@@ -138,6 +160,11 @@ func k8sConfig(k8sConfigFlags *k8scliopts.ConfigFlags, fs *pflag.FlagSet) (*rest
 			return nil, err
 		}
 		currentContext = rawConfig.CurrentContext
+	}
+
+	timeout, err := fs.GetString("request-timeout")
+	if err != nil {
+		return nil, err
 	}
 
 	if timeout == "" {
