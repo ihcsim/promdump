@@ -10,13 +10,13 @@ TARGET_BIN_DIR = "$(TARGET_DIR)"/bin
 
 all: test lint build
 
-build: prebuild core streaming cli
+build: prebuild core cli
 prebuild:
 	rm -rf ./target/bin
 	mkdir -p ./target/bin
 
 .PHONY: test
-test: test-core test-streaming test-cli
+test: test-core test-cli
 	go test -race ./...
 
 test-%:
@@ -25,9 +25,9 @@ test-%:
 lint-%:
 	cd ./$* && golangci-lint run
 
-lint: lint-core lint-streaming lint-cli
+lint: lint-core lint-cli
 
-tidy: tidy-core tidy-streaming tidy-cli test
+tidy: tidy-core tidy-cli test
 
 tidy-%:
 	cd ./$* && go mod tidy
@@ -36,11 +36,6 @@ tidy-%:
 core: test-core
 	cd core ;\
 	CGO_ENABLED=0 GOOS="$(BUILD_OS)" GOARCH="$(BUILD_ARCH)" go build -o "$(TARGET_BIN_DIR)"/promdump ./cmd
-
-.PHONY: streaming
-streaming: test-streaming
-	cd streaming ;\
-	CGO_ENABLED=0 GOOS="$(BUILD_OS)" GOARCH="$(BUILD_ARCH)" go build -o "$(TARGET_BIN_DIR)"/promdump-streaming ./cmd
 
 .PHONY: cli
 cli: test-cli
