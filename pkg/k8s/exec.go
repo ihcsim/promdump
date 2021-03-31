@@ -88,6 +88,10 @@ func (c *Clientset) CanExec() error {
 		},
 	}
 
+	c.logger.Log("message", "checking for exec permissions",
+		"namespace", ns,
+		"request-timeout", timeout)
+
 	ctx, cancel := context.WithTimeout(context.Background(), timeout)
 	defer cancel()
 
