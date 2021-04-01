@@ -46,9 +46,10 @@ cli: test-cli
 	git_commit="$$(git rev-parse --short HEAD)" ;\
 	CGO_ENABLED=0 GOOS="$(BUILD_OS)" GOARCH="$(BUILD_ARCH)" go build -ldflags="-X 'main.Version=$${git_commit}'" -o "$(TARGET_BIN_DIR)/promdump-cli" ./cmd
 
-publish:
+publish: build
 	rm -f "$(TARGET_DIR)/promdump-$(VERSION).tar.gz" "$(TARGET_DIR)/promdump-$(VERSION).sha256"
 	tar -C "$(TARGET_BIN_DIR)" -cvf "$(TARGET_DIR)/promdump-$(VERSION).tar.gz" promdump
+	tar -C "cli/cmd" -rvf "$(TARGET_DIR)/promdump-$(VERSION).tar.gz" promdump.yaml
 	shasum -a256 "$(TARGET_DIR)/promdump-$(VERSION).tar.gz"  | awk '{print $$1}' > "$(TARGET_DIR)/promdump-$(VERSION).sha256"
 
 promdump_deploy: core

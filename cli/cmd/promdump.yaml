@@ -1,0 +1,13 @@
+download:
+  # remote host that stores the promdump binary and checksum files
+  remoteHost: https://storage.googleapis.com/promdump
+
+  # download timeout
+  timeout: 10s
+
+  # local directory to store the downloaded promdump binary
+  localDir: /tmp
+
+prometheus:
+  # data directory in the prometheus pod
+  dataDir: /prometheus

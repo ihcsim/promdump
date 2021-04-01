@@ -12,38 +12,38 @@ import (
 )
 
 var (
-	cmdFixture    *cobra.Command
-	configFixture *config.Config
+	cmd       *cobra.Command
+	appConfig *config.Config
 )
 
-func TestConfigFromFlagset(t *testing.T) {
+func TestConfig(t *testing.T) {
 	if err := initFixtures(); err != nil {
 		t.Fatal("unexpected error: ", err)
 	}
 
-	if err := cmdFixture.Execute(); err != nil {
+	if err := cmd.Execute(); err != nil {
 		t.Fatal("unexpected error: ", err)
 	}
 
-	args := buildArgsFromFlags(cmdFixture, t)
-	cmdFixture.SetArgs(args)
+	args := buildArgsFromFlags(cmd, t)
+	cmd.SetArgs(args)
 
-	if err := cmdFixture.Execute(); err != nil {
+	if err := cmd.Execute(); err != nil {
 		t.Fatal("unexpected error: ", err)
 	}
 
-	assertConfig(cmdFixture, configFixture, t)
+	assertConfig(cmd, appConfig, t)
 }
 
 func initFixtures() error {
 	var err error
-	cmdFixture, err = initRootCmd()
+	cmd, err = initRootCmd()
 	if err != nil {
 		return err
 	}
 
-	cmdFixture.PersistentPreRunE = func(cmd *cobra.Command, args []string) error {
-		configFixture, err = config.FromFlagSet(cmd.Flags())
+	cmd.PersistentPreRunE = func(cmd *cobra.Command, args []string) error {
+		appConfig, err = config.New("config", cmd.Flags(), "testdata")
 		if err != nil {
 			return fmt.Errorf("failed to init viper config: %w", err)
 		}
@@ -51,16 +51,16 @@ func initFixtures() error {
 		return nil
 	}
 
-	cmdFixture.RunE = func(cmd *cobra.Command, args []string) error {
+	cmd.RunE = func(cmd *cobra.Command, args []string) error {
 		return nil // omit irrelevant streaming function
 	}
 
 	// preset required fields with no default value
-	if err := cmdFixture.PersistentFlags().Set("pod", "test-pod"); err != nil {
+	if err := cmd.PersistentFlags().Set("pod", "test-pod"); err != nil {
 		return err
 	}
 
-	cmdFixture.SetOutput(ioutil.Discard)
+	cmd.SetOutput(ioutil.Discard)
 	return nil
 }
 
@@ -104,6 +104,24 @@ func testArgs(f *pflag.Flag, t *testing.T) []string {
 }
 
 func assertConfig(cmd *cobra.Command, appConfig *config.Config, t *testing.T) {
+	// verify YAML config
+	if actual := appConfig.GetString("key1"); actual != "value1" {
+		t.Errorf("mismatch config. expected: value1, actual: %s", actual)
+	}
+
+	if actual := appConfig.GetString("key2"); actual != "value2" {
+		t.Errorf("mismatch config. expected: value2, actual: %s", actual)
+	}
+
+	if actual := appConfig.GetString("object.key1"); actual != "objValue1" {
+		t.Errorf("mismatch config. expected: objValue1, actual: %s", actual)
+	}
+
+	if actual := appConfig.GetString("object.key2"); actual != "objValue2" {
+		t.Errorf("mismatch config. expected: objValue2, actual: %s", actual)
+	}
+
+	// verify flags config
 	cmd.Flags().VisitAll(func(f *pflag.Flag) {
 		if skipFlag(f) {
 			return

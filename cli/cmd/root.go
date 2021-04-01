@@ -29,6 +29,7 @@ var (
 
 func initRootCmd() (*cobra.Command, error) {
 	var (
+		appConfig      *config.Config
 		clientset      *k8s.Clientset
 		k8sConfigFlags *k8scliopts.ConfigFlags
 	)
@@ -54,10 +55,11 @@ func initRootCmd() (*cobra.Command, error) {
 				return fmt.Errorf("exec operation denied: %w", err)
 			}
 
-			return run(cmd, clientset)
+			return run(cmd, appConfig, clientset)
 		},
 		PersistentPreRunE: func(cmd *cobra.Command, args []string) error {
-			appConfig, err := config.FromFlagSet(cmd.Flags())
+			var err error
+			appConfig, err = config.New("promdump", cmd.Flags())
 			if err != nil {
 				return fmt.Errorf("failed to init viper config: %w", err)
 			}
@@ -189,17 +191,33 @@ func k8sConfig(k8sConfigFlags *k8scliopts.ConfigFlags, fs *pflag.FlagSet) (*rest
 		}).ClientConfig()
 }
 
-func run(cmd *cobra.Command, clientset *k8s.Clientset) error {
+func run(cmd *cobra.Command, config *config.Config, clientset *k8s.Clientset) error {
 	force, err := cmd.Flags().GetBool("force")
 	if err != nil {
 		return err
 	}
 
-	remoteURI := fmt.Sprintf("https://storage.googleapis.com/promdump/promdump-%s.tar.gz", Version)
-	remoteURISHA := fmt.Sprintf("https://storage.googleapis.com/promdump/promdump-%s.sha256", Version)
-	localDir := os.TempDir()
-	remoteDir := "/prometheus"
-	timeout := time.Second * 10
+	var (
+		remoteHost   = config.GetString("download.remoteHost")
+		remoteURI    = fmt.Sprintf("%s/promdump-%s.tar.gz", remoteHost, Version)
+		remoteURISHA = fmt.Sprintf("%s/promdump-%s.sha256", remoteHost, Version)
+		timeout      = config.GetDuration("download.timeout")
+		localDir     = config.GetString("download.localDir")
+		remoteDir    = config.GetString("prometheus.dataDir")
+	)
+
+	_ = logger.Log("message", "read from config file",
+		"remoteHost", remoteHost,
+		"remoteURI", remoteURI,
+		"remoteURISHA", remoteURISHA,
+		"timeout", timeout,
+		"localDir", localDir,
+		"remoteDir", remoteDir)
+
+	if localDir == "" {
+		localDir = os.TempDir()
+	}
+
 	download := download.New(localDir, timeout, logger)
 	stdin, err := download.Get(force, remoteURI, remoteURISHA)
 	if err != nil {
