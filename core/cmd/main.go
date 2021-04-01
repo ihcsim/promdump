@@ -6,18 +6,22 @@ import (
 	"compress/gzip"
 	"flag"
 	"fmt"
+	"io/ioutil"
 	"os"
 	"path/filepath"
-	"strings"
 	"time"
 
 	"github.com/ihcsim/promdump/pkg/log"
-	"github.com/prometheus/prometheus/tsdb"
+	"github.com/ihcsim/promdump/pkg/tsdb"
+	promtsdb "github.com/prometheus/prometheus/tsdb"
 )
 
-const targetDir = "/tmp"
+const timeFormat = "2006-01-02-150405"
 
-var logger = log.New(os.Stderr).With("component", "core")
+var (
+	logger    = log.New(os.Stderr)
+	targetDir = os.TempDir()
+)
 
 func main() {
 	var (
@@ -40,113 +44,102 @@ func main() {
 		"maxTime", time.Unix(*maxTime, 0),
 		"minTime", time.Unix(*minTime, 0))
 
-	db, err := tsdb.OpenDBReadOnly(*dataDir, logger.Logger)
+	tsdb := tsdb.New(*dataDir, logger)
+	blocks, err := tsdb.Blocks(*maxTime, *minTime)
 	if err != nil {
 		exit(err)
 	}
-	defer func() {
-		if err := db.Close(); err != nil {
-			panic(err)
-		}
-	}()
 
-	blocks, err := db.Blocks()
+	fileLocation, err := compressed(blocks)
 	if err != nil {
 		exit(err)
 	}
-	_ = logger.Log("numBlocks", len(blocks))
 
+	_ = logger.Log("message", "finished", "outputFile", fileLocation)
+}
+
+func compressed(blocks []*promtsdb.Block) (string, error) {
 	var (
 		buf = &bytes.Buffer{}
 		tw  = tar.NewWriter(buf)
 	)
 
 	for _, block := range blocks {
-		b, ok := block.(*tsdb.Block)
-		if !ok {
-			continue
-		}
+		if err := filepath.Walk(block.Dir(), func(path string, info os.FileInfo, err error) error {
+			if err != nil {
+				return err
+			}
 
-		if b.MaxTime() <= *maxTime || b.MinTime() >= *minTime {
-			blogger := logger.With("block", b.Dir())
-			err := filepath.Walk(b.Dir(), func(path string, info os.FileInfo, err error) error {
-				if err != nil {
-					return err
+			_ = logger.Log("message", "reading data block", "path", path)
+			writeHeader := func(typeFlag byte) error {
+				header := &tar.Header{
+					Name:     path,
+					Mode:     int64(info.Mode()),
+					ModTime:  info.ModTime(),
+					Size:     info.Size(),
+					Typeflag: typeFlag,
 				}
 
-				writeHeader := func(typeFlag byte) error {
-					header := &tar.Header{
-						Name:     path,
-						Mode:     int64(info.Mode()),
-						ModTime:  info.ModTime(),
-						Size:     info.Size(),
-						Typeflag: typeFlag,
-					}
+				return tw.WriteHeader(header)
+			}
 
-					return tw.WriteHeader(header)
-				}
+			// if dir, only write header
+			if info.IsDir() {
+				return writeHeader(tar.TypeDir)
+			}
 
-				// if dir, only write header
-				if info.IsDir() {
-					return writeHeader(tar.TypeDir)
-				}
+			if err := writeHeader(tar.TypeReg); err != nil {
+				return err
+			}
 
-				fnameIndex := strings.Index(path, b.Dir()) + len(b.Dir()) + 1
-				fslogger := blogger.With("file", path[fnameIndex:])
-				if err := writeHeader(tar.TypeReg); err != nil {
-					return err
-				}
+			file, err := os.Open(path)
+			if err != nil {
+				return fmt.Errorf("failed to open data file: %w", err)
+			}
+			defer file.Close()
 
-				file, err := os.Open(path)
-				if err != nil {
-					return fmt.Errorf("failed to open data file: %w", err)
-				}
-				defer file.Close()
+			data, err := ioutil.ReadAll(file)
+			if err != nil {
+				return fmt.Errorf("failed to read data file: %w", err)
+			}
 
-				data := make([]byte, info.Size())
-				numBytesRead, err := file.Read(data)
-				if err != nil {
-					return fmt.Errorf("failed to read data file: %w", err)
-				}
+			numBytesCompressed, err := tw.Write(data)
+			if err != nil {
+				return fmt.Errorf("failed to write compressed file: %w", err)
+			}
 
-				numBytesCompressed, err := tw.Write(data)
-				if err != nil {
-					return fmt.Errorf("failed to write compressed file: %w", err)
-				}
-
-				_ = fslogger.Log("numBytesRead", numBytesRead,
-					"numBytesCompressed", numBytesCompressed)
-				return nil
-			})
-			_ = blogger.Log("errors", err)
+			_ = logger.Log("message", "read completed", "numBytesCompressed", numBytesCompressed)
+			return nil
+		}); err != nil {
+			_ = logger.Log("errors", err)
 		}
 	}
 
 	if err := tw.Close(); err != nil {
-		exit(err)
+		return "", err
 	}
 
 	now := time.Now()
-	targetFilename := fmt.Sprintf(filepath.Join(targetDir, "promdump-%s.tar.gz"), now.Format("2006-01-02-150405"))
-	targetFile, err := os.Create(targetFilename)
+	filename := fmt.Sprintf(filepath.Join(targetDir, "promdump-%s.tar.gz"), now.Format(timeFormat))
+	tarFile, err := os.Create(filename)
 	if err != nil {
-		exit(err)
+		return "", err
 	}
 
-	gwriter := gzip.NewWriter(targetFile)
+	gwriter := gzip.NewWriter(tarFile)
 	defer gwriter.Close()
 
 	gwriter.Header = gzip.Header{
-		Name:    targetFilename,
+		Name:    filename,
 		ModTime: now,
 		OS:      255,
 	}
 
 	if _, err := gwriter.Write(buf.Bytes()); err != nil {
-		exit(err)
+		return "", err
 	}
 
-	os.Stdout.Write([]byte(targetFilename))
+	return filename, nil
 }
 
 func exit(err error) {
