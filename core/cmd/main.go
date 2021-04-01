@@ -45,7 +45,7 @@ func main() {
 		"minTime", time.Unix(*minTime, 0))
 
 	tsdb := tsdb.New(*dataDir, logger)
-	blocks, err := tsdb.Blocks(*maxTime, *minTime)
+	blocks, err := tsdb.Blocks(*minTime, *maxTime)
 	if err != nil {
 		exit(err)
 	}

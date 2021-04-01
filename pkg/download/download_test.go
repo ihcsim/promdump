@@ -43,7 +43,7 @@ func TestDownload(t *testing.T) {
 		for i, b := range responseSHA {
 			d[i] = b
 		}
-		fmt.Printf("%x\n", d)
+
 		if _, err := resp.Write(d); err != nil {
 			t.Fatal("unexpected error: ", err)
 		}

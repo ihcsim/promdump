@@ -18,7 +18,7 @@ func New(dataDir string, logger *log.Logger) *Tsdb {
 
 // Blocks looks for data blocks that fall within the provided time range, in the
 // data directory.
-func (t *Tsdb) Blocks(maxTime, minTime int64) ([]*tsdb.Block, error) {
+func (t *Tsdb) Blocks(minTime, maxTime int64) ([]*tsdb.Block, error) {
 	_ = t.logger.Log("message", "accessing tsdb", "datadir", t.dataDir)
 	db, err := tsdb.OpenDBReadOnly(t.dataDir, t.logger.Logger)
 	if err != nil {
@@ -42,7 +42,7 @@ func (t *Tsdb) Blocks(maxTime, minTime int64) ([]*tsdb.Block, error) {
 			continue
 		}
 
-		if b.MaxTime() <= maxTime || b.MinTime() >= minTime {
+		if b.MaxTime() <= maxTime && b.MinTime() >= minTime {
 			results = append(results, b)
 		}
 	}
