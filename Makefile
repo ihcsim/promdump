@@ -1,5 +1,5 @@
-TARGET_NAMESPACE ?= prometheus
-TARGET_DIR ?= /prometheus
+NAMESPACE ?= prometheus
+REMOTE_DIR ?= /prometheus
 
 BUILD_OS ?= linux
 BUILD_ARCH ?= amd64
@@ -8,7 +8,7 @@ BASE_DIR = $(shell pwd)
 TARGET_DIR = $(BASE_DIR)/target
 TARGET_BIN_DIR = $(TARGET_DIR)/bin
 
-VERSION = $(shell git describe)
+VERSION = $(shell git describe --abbrev=0)
 
 all: test lint build
 
@@ -48,16 +48,16 @@ cli: test-cli
 
 publish:
 	rm -f "$(TARGET_DIR)/promdump-$(VERSION).tar.gz" "$(TARGET_DIR)/promdump-$(VERSION).sha256"
-	tar -C target/bin -cvf "$(TARGET_DIR)/promdump-$(VERSION).tar.gz" promdump
+	tar -C "$(TARGET_BIN_DIR)" -cvf "$(TARGET_DIR)/promdump-$(VERSION).tar.gz" promdump
 	shasum -a256 "$(TARGET_DIR)/promdump-$(VERSION).tar.gz"  | awk '{print $$1}' > "$(TARGET_DIR)/promdump-$(VERSION).sha256"
 
 promdump_deploy: core
-	target_pod="$$(kubectl -n "$(TARGET_NAMESPACE)" get po -oname | awk -F'/' '{print $$2}')" ;\
-	kubectl -n "$(TARGET_NAMESPACE)" cp promdump "$${target_pod}:$(TARGET_DIR)"
+	target_pod="$$(kubectl -n "$(NAMESPACE)" get po -oname | awk -F'/' '{print $$2}')" ;\
+	kubectl -n "$(NAMESPACE)" cp "$(TARGET_BIN_DIR)/promdump" "$${target_pod}:$(REMOTE_DIR)"
 
 promdump_test:
 	rm -rf target
 	mkdir -p target
-	target_pod="$$(kubectl -n "$(TARGET_NAMESPACE)" get po -oname | awk -F'/' '{print $$2}')" ;\
-	dump_file="$$(kubectl -n "$(TARGET_NAMESPACE)" exec $${target_pod} -- "$(TARGET_DIR)/promdump")" ;\
-	kubectl -n "$(TARGET_NAMESPACE)" cp "$${target_pod}:$${dump_file}" "target/blocks.tar.gz"
+	target_pod="$$(kubectl -n "$(NAMESPACE)" get po -oname | awk -F'/' '{print $$2}')" ;\
+	dump_file="$$(kubectl -n "$(NAMESPACE)" exec $${target_pod} -- "$(REMOTE_DIR)/promdump")" ;\
+	kubectl -n "$(NAMESPACE)" cp "$${target_pod}:$${dump_file}" "target/blocks.tar.gz"
