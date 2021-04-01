@@ -1,8 +1,6 @@
 package k8s
 
 import (
-	"os"
-
 	"github.com/ihcsim/promdump/pkg/config"
 	"github.com/ihcsim/promdump/pkg/log"
 	"k8s.io/client-go/kubernetes"
@@ -19,12 +17,11 @@ type Clientset struct {
 }
 
 // NewClientset returns a new Clientset for the given config.
-func NewClientset(appConfig *config.Config, k8sConfig *rest.Config) (*Clientset, error) {
+func NewClientset(appConfig *config.Config, k8sConfig *rest.Config, logger *log.Logger) (*Clientset, error) {
 	k8sClientset, err := kubernetes.NewForConfig(k8sConfig)
 	if err != nil {
 		return nil, err
 	}
-	logger := log.New(os.Stderr).With("component", "k8s")
 
 	return &Clientset{
 		appConfig,

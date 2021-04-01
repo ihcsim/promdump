@@ -24,10 +24,10 @@ type Download struct {
 }
 
 // New returns a new instance of Download.
-func New(localDir string, timeout time.Duration) *Download {
+func New(localDir string, timeout time.Duration, logger *log.Logger) *Download {
 	return &Download{
 		localDir: localDir,
-		logger:   log.New(os.Stderr).With("component", "download"),
+		logger:   logger,
 		http: &http.Client{
 			Timeout: timeout,
 		},
@@ -68,6 +68,10 @@ func (d *Download) Get(force bool, remoteURI, remoteURISHA string) (io.ReadClose
 	}
 
 	newFile, err := os.Open(savedPath)
+	if err != nil {
+		return nil, err
+	}
+
 	if err := d.checksum(newFile, remoteURISHA); err != nil {
 		return nil, err
 	}
@@ -76,7 +80,7 @@ func (d *Download) Get(force bool, remoteURI, remoteURISHA string) (io.ReadClose
 }
 
 func (d *Download) download(remote, savedPath string) error {
-	d.logger.Log("message", "downloading promdump", "endpoint", remote)
+	_ = d.logger.Log("message", "downloading promdump", "endpoint", remote)
 
 	resp, err := d.http.Get(remote)
 	if err != nil {
@@ -94,12 +98,12 @@ func (d *Download) download(remote, savedPath string) error {
 		return err
 	}
 
-	d.logger.Log("message", "download completed", "numBytesWrite", nbr)
+	_ = d.logger.Log("message", "download completed", "numBytesWrite", nbr)
 	return nil
 }
 
 func (d *Download) checksum(file *os.File, remote string) error {
-	d.logger.Log("message", "verifying checksum", "endpoint", remote)
+	_ = d.logger.Log("message", "verifying checksum", "endpoint", remote)
 
 	resp, err := d.http.Get(remote)
 	if err != nil {
@@ -116,12 +120,14 @@ func (d *Download) checksum(file *os.File, remote string) error {
 	if _, err := io.Copy(sha, file); err != nil {
 		return err
 	}
-	defer file.Seek(0, io.SeekStart)
+	if _, err := file.Seek(0, io.SeekStart); err != nil {
+		return err
+	}
 
 	if actual := fmt.Sprintf("%x", sha.Sum(nil)); expected.String() == string(actual) {
 		return fmt.Errorf("%w: expected:%s, actual:%s", errChecksumMismatch, expected, actual)
 	}
 
-	d.logger.Log("message", "confirmed checksum")
+	_ = d.logger.Log("message", "confirmed checksum")
 	return nil
 }

@@ -28,7 +28,7 @@ func (c *Clientset) ExecPod(command []string, stdin io.Reader, stdout, stderr io
 		endTime        = c.config.GetTime("end-time")
 	)
 
-	c.logger.Log("message", "sending exec request",
+	_ = c.logger.Log("message", "sending exec request",
 		"namespace", ns,
 		"pod", pod,
 		"container", container,
@@ -88,7 +88,7 @@ func (c *Clientset) CanExec() error {
 		},
 	}
 
-	c.logger.Log("message", "checking for exec permissions",
+	_ = c.logger.Log("message", "checking for exec permissions",
 		"namespace", ns,
 		"request-timeout", timeout)
 

@@ -36,7 +36,7 @@ func main() {
 		return
 	}
 
-	logger.Log("dataDir", dataDir,
+	_ = logger.Log("dataDir", dataDir,
 		"maxTime", time.Unix(*maxTime, 0),
 		"minTime", time.Unix(*minTime, 0))
 
@@ -54,7 +54,7 @@ func main() {
 	if err != nil {
 		exit(err)
 	}
-	logger.Log("numBlocks", len(blocks))
+	_ = logger.Log("numBlocks", len(blocks))
 
 	var (
 		buf = &bytes.Buffer{}
@@ -114,11 +114,11 @@ func main() {
 					return fmt.Errorf("failed to write compressed file: %w", err)
 				}
 
-				fslogger.Log("numBytesRead", numBytesRead,
+				_ = fslogger.Log("numBytesRead", numBytesRead,
 					"numBytesCompressed", numBytesCompressed)
 				return nil
 			})
-			blogger.Log("errors", err)
+			_ = blogger.Log("errors", err)
 		}
 	}
 
@@ -150,6 +150,6 @@ func main() {
 }
 
 func exit(err error) {
-	logger.Log("error", err)
+	_ = logger.Log("error", err)
 	os.Exit(1)
 }

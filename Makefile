@@ -28,6 +28,7 @@ lint-%:
 	cd ./$* && golangci-lint run
 
 lint: lint-core lint-cli
+	golangci-lint run
 
 tidy: tidy-core tidy-cli test
 

@@ -67,7 +67,7 @@ func initRootCmd() (*cobra.Command, error) {
 				return fmt.Errorf("failed to init k8s config: %w", err)
 			}
 
-			clientset, err = k8s.NewClientset(appConfig, k8sConfig)
+			clientset, err = k8s.NewClientset(appConfig, k8sConfig, logger)
 			if err != nil {
 				return fmt.Errorf("failed to init k8s client: %w", err)
 			}
@@ -200,7 +200,7 @@ func run(cmd *cobra.Command, clientset *k8s.Clientset) error {
 	localDir := os.TempDir()
 	remoteDir := "/prometheus"
 	timeout := time.Second * 10
-	download := download.New(localDir, timeout)
+	download := download.New(localDir, timeout, logger)
 	stdin, err := download.Get(force, remoteURI, remoteURISHA)
 	if err != nil {
 		return fmt.Errorf("can't download promdump binary: %w", err)
