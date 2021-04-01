@@ -27,8 +27,14 @@ func main() {
 		dataDir = flag.String("data-dir", "/prometheus", "path to the Prometheus data directory")
 		maxTime = flag.Int64("max-time", defaultMaxTime.Unix(), "maximum timestamp of the data")
 		minTime = flag.Int64("min-time", defaultMinTime.Unix(), "minimum timestamp of the data")
+		help    = flag.Bool("help", false, "show usage")
 	)
 	flag.Parse()
+
+	if *help {
+		flag.Usage()
+		return
+	}
 
 	logger.Log("dataDir", dataDir,
 		"maxTime", time.Unix(*maxTime, 0),

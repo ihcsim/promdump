@@ -2,11 +2,11 @@ package main
 
 import (
 	"fmt"
-	"io"
 	"os"
 	"time"
 
 	"github.com/ihcsim/promdump/pkg/config"
+	"github.com/ihcsim/promdump/pkg/download"
 	"github.com/ihcsim/promdump/pkg/k8s"
 	"github.com/spf13/cobra"
 	"github.com/spf13/pflag"
@@ -24,7 +24,7 @@ var (
 	defaultRequestTimeout = "10s"
 
 	// Version is the version of the CLI, set during build time
-	Version = "unknown"
+	Version = "v0.1.0"
 )
 
 func initRootCmd() (*cobra.Command, error) {
@@ -54,9 +54,7 @@ func initRootCmd() (*cobra.Command, error) {
 				return fmt.Errorf("exec operation denied: %w", err)
 			}
 
-			execCmd := []string{"/bin/sh"}
-			var stdin io.Reader
-			return clientset.ExecPod(execCmd, stdin, os.Stdout, os.Stderr, false)
+			return run(cmd, clientset)
 		},
 		PersistentPreRunE: func(cmd *cobra.Command, args []string) error {
 			appConfig, err := config.FromFlagSet(cmd.Flags())
@@ -84,6 +82,7 @@ func initRootCmd() (*cobra.Command, error) {
 
 	rootCmd.PersistentFlags().StringP("pod", "p", "", "targeted Prometheus pod name")
 	rootCmd.PersistentFlags().StringP("container", "c", "prometheus", "targeted Prometheus container name")
+	rootCmd.Flags().BoolP("force", "f", false, "force the re-download of the promdump TAR file, which is saved to the local $TMP folder")
 	rootCmd.Flags().String("start-time", defaultStartTime.Format(timeFormat), "start time (UTC) of the samples (yyyy-mm-dd hh:mm:ss)")
 	rootCmd.Flags().String("end-time", defaultEndTime.Format(timeFormat), "end time (UTC) of the samples (yyyy-mm-dd hh:mm:ss")
 
@@ -102,7 +101,9 @@ func setMissingDefaults(cmd *cobra.Command) error {
 	}
 
 	if ns == "" {
-		ns = defaultNamespace
+		if err := cmd.Flags().Set("namespace", defaultNamespace); err != nil {
+			return err
+		}
 	}
 
 	timeout, err := cmd.Flags().GetString("request-timeout")
@@ -111,7 +112,9 @@ func setMissingDefaults(cmd *cobra.Command) error {
 	}
 
 	if timeout == "0" {
-		timeout = defaultRequestTimeout
+		if err := cmd.Flags().Set("request-timeout", defaultRequestTimeout); err != nil {
+			return err
+		}
 	}
 
 	return nil
@@ -184,4 +187,30 @@ func k8sConfig(k8sConfigFlags *k8scliopts.ConfigFlags, fs *pflag.FlagSet) (*rest
 			CurrentContext: currentContext,
 			Timeout:        timeout,
 		}).ClientConfig()
+}
+
+func run(cmd *cobra.Command, clientset *k8s.Clientset) error {
+	force, err := cmd.Flags().GetBool("force")
+	if err != nil {
+		return err
+	}
+
+	remoteURI := fmt.Sprintf("https://storage.googleapis.com/promdump/promdump-%s.tar.gz", Version)
+	remoteURISHA := fmt.Sprintf("https://storage.googleapis.com/promdump/promdump-%s.sha256", Version)
+	localDir := os.TempDir()
+	remoteDir := "/prometheus"
+	timeout := time.Second * 10
+	download := download.New(localDir, timeout)
+	stdin, err := download.Get(force, remoteURI, remoteURISHA)
+	if err != nil {
+		return fmt.Errorf("can't download promdump binary: %w", err)
+	}
+
+	execCmd := []string{"tar", "-C", remoteDir, "-xvf", "-"}
+	if err := clientset.ExecPod(execCmd, stdin, os.Stdout, os.Stderr, false); err != nil {
+		return err
+	}
+
+	execCmd = []string{fmt.Sprintf("%s/promdump", remoteDir), "-help"}
+	return clientset.ExecPod(execCmd, os.Stdin, os.Stdout, os.Stderr, false)
 }

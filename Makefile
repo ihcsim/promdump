@@ -4,9 +4,11 @@ TARGET_DIR ?= /prometheus
 BUILD_OS ?= linux
 BUILD_ARCH ?= amd64
 
-BASE_DIR = "$(shell pwd)"
-TARGET_DIR = "$(BASE_DIR)"/target
-TARGET_BIN_DIR = "$(TARGET_DIR)"/bin
+BASE_DIR = $(shell pwd)
+TARGET_DIR = $(BASE_DIR)/target
+TARGET_BIN_DIR = $(TARGET_DIR)/bin
+
+VERSION = $(shell git describe)
 
 all: test lint build
 
@@ -35,13 +37,18 @@ tidy-%:
 .PHONY: core
 core: test-core
 	cd core ;\
-	CGO_ENABLED=0 GOOS="$(BUILD_OS)" GOARCH="$(BUILD_ARCH)" go build -o "$(TARGET_BIN_DIR)"/promdump ./cmd
+	CGO_ENABLED=0 GOOS="$(BUILD_OS)" GOARCH="$(BUILD_ARCH)" go build -o "$(TARGET_BIN_DIR)/promdump" ./cmd
 
 .PHONY: cli
 cli: test-cli
 	cd cli ;\
 	git_commit="$$(git rev-parse --short HEAD)" ;\
-	CGO_ENABLED=0 GOOS="$(BUILD_OS)" GOARCH="$(BUILD_ARCH)" go build -ldflags="-X 'main.Version=$${git_commit}'" -o "$(TARGET_BIN_DIR)"/promdump-cli ./cmd
+	CGO_ENABLED=0 GOOS="$(BUILD_OS)" GOARCH="$(BUILD_ARCH)" go build -ldflags="-X 'main.Version=$${git_commit}'" -o "$(TARGET_BIN_DIR)/promdump-cli" ./cmd
+
+publish:
+	rm -f "$(TARGET_DIR)/promdump-$(VERSION).tar.gz" "$(TARGET_DIR)/promdump-$(VERSION).sha256"
+	tar -C target/bin -cvf "$(TARGET_DIR)/promdump-$(VERSION).tar.gz" promdump
+	shasum -a256 "$(TARGET_DIR)/promdump-$(VERSION).tar.gz"  | awk '{print $$1}' > "$(TARGET_DIR)/promdump-$(VERSION).sha256"
 
 promdump_deploy: core
 	target_pod="$$(kubectl -n "$(TARGET_NAMESPACE)" get po -oname | awk -F'/' '{print $$2}')" ;\
