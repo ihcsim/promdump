@@ -43,7 +43,8 @@ core: test-core
 .PHONY: cli
 cli: test-cli
 	cd cli ;\
-	CGO_ENABLED=0 GOOS="$(BUILD_OS)" GOARCH="$(BUILD_ARCH)" go build -ldflags="-X 'main.Version=$(VERSION)'" -o "$(TARGET_BIN_DIR)/promdump-cli" ./cmd
+	CGO_ENABLED=0 GOOS="$(BUILD_OS)" GOARCH="$(BUILD_ARCH)" go build -ldflags="-X 'main.Version=$(VERSION)'" -o "$(TARGET_BIN_DIR)/promdump-cli" ./cmd ;\
+	cp cmd/promdump.yaml "$(TARGET_BIN_DIR)/"
 
 publish: build
 	rm -f "$(TARGET_DIR)/promdump-$(VERSION).tar.gz" "$(TARGET_DIR)/promdump-$(VERSION).sha256"

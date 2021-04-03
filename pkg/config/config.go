@@ -1,6 +1,9 @@
 package config
 
 import (
+	"os"
+	"path/filepath"
+
 	"github.com/spf13/pflag"
 	"github.com/spf13/viper"
 )
@@ -17,6 +20,12 @@ func New(configFile string, flags *pflag.FlagSet, configDir ...string) (*Config,
 
 	v.SetConfigName(configFile)
 	v.AddConfigPath(".")
+	if path := os.Getenv("PATH"); path != "" {
+		for _, p := range filepath.SplitList(path) {
+			v.AddConfigPath(p)
+		}
+	}
+
 	for _, dir := range configDir {
 		v.AddConfigPath(dir)
 	}
