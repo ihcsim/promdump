@@ -91,6 +91,10 @@ func (d *Download) download(remote, savedPath string) error {
 	}
 	defer resp.Body.Close()
 
+	if resp.StatusCode != http.StatusOK {
+		return fmt.Errorf("download failed. reason: %s", resp.Status)
+	}
+
 	file, err := os.Create(savedPath)
 	if err != nil {
 		return err
