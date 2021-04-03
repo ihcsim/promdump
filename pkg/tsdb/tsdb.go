@@ -22,7 +22,15 @@ func New(dataDir string, logger *log.Logger) *Tsdb {
 // Blocks looks for data blocks that fall within the provided time range, in the
 // data directory.
 func (t *Tsdb) Blocks(minTime, maxTime int64) ([]*tsdb.Block, error) {
-	_ = t.logger.Log("message", "accessing tsdb", "datadir", t.dataDir)
+	var (
+		startTime = time.Unix(minTime/int64(time.Microsecond), 0)
+		endTime   = time.Unix(maxTime/int64(time.Microsecond), 0)
+	)
+	_ = t.logger.Log("message", "accessing tsdb",
+		"datadir", t.dataDir,
+		"startTime", startTime,
+		"endTime", endTime)
+
 	db, err := tsdb.OpenDBReadOnly(t.dataDir, t.logger.Logger)
 	if err != nil {
 		return nil, err
@@ -47,25 +55,30 @@ func (t *Tsdb) Blocks(minTime, maxTime int64) ([]*tsdb.Block, error) {
 		}
 
 		var (
-			truncMinTime = b.MinTime() / int64(time.Microsecond)
-			truncMaxTime = b.MaxTime() / int64(time.Microsecond)
-			truncDir     = b.Dir()[len(t.dataDir)+2:]
-			blockDir     = truncDir
+			blockStartTime = time.Unix(b.MinTime()/int64(time.Microsecond), 0)
+			blockEndTime   = time.Unix(b.MaxTime()/int64(time.Microsecond), 0)
+			truncDir       = b.Dir()[len(t.dataDir)+2:]
+			blockDir       = truncDir
 		)
 		if i := strings.Index(truncDir, "/"); i != -1 {
 			blockDir = truncDir[:strings.Index(truncDir, "/")]
 		}
 
-		if truncMinTime >= minTime && truncMaxTime <= maxTime {
+		t.logger.Log("message", "checking block",
+			"path", b.Dir(),
+			"blockStartTime", blockStartTime,
+			"blockEndTime", blockEndTime,
+		)
+
+		if (blockStartTime.After(startTime) || blockStartTime.Equal(startTime)) &&
+			(blockEndTime.Before(endTime) || blockEndTime.Equal(endTime)) {
 			if blockDir != current {
 				current = blockDir
-				t.logger.Log("message", "retrieving block",
-					"name", b.Dir(),
-					"minTime", time.Unix(truncMinTime, 0),
-					"maxTime", time.Unix(truncMaxTime, 0),
-				)
+				t.logger.Log("message", "adding block", "name", b.Dir())
 			}
 			results = append(results, b)
+		} else {
+			t.logger.Log("message", "skipping block", "name", b.Dir())
 		}
 	}
 

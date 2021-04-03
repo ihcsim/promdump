@@ -240,8 +240,8 @@ func dump(cmd *cobra.Command, config *config.Config, clientset *k8s.Clientset) e
 	if err != nil {
 		return err
 	}
-	maxTimestamp := strconv.FormatInt(maxTime.Unix(), 10)
-	minTimestamp := strconv.FormatInt(minTime.Unix(), 10)
+	maxTimestamp := strconv.FormatInt(maxTime.Unix()*int64(time.Microsecond), 10)
+	minTimestamp := strconv.FormatInt(minTime.Unix()*int64(time.Microsecond), 10)
 
 	execCmd := []string{fmt.Sprintf("%s/promdump", dataDir), "-min-time", minTimestamp, "-max-time", maxTimestamp}
 	return clientset.ExecPod(execCmd, os.Stdin, os.Stdout, os.Stderr, false)
