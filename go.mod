@@ -4,15 +4,17 @@ go 1.14
 
 require (
 	github.com/go-kit/kit v0.10.0
+	github.com/matttproud/golang_protobuf_extensions v1.0.2-0.20181231171920-c182affec369 // indirect
+	github.com/prometheus/procfs v0.2.0 // indirect
 	github.com/prometheus/prometheus v1.8.2-0.20201015110737-0a7fdd3b7696
-	github.com/spf13/cobra v1.1.1 // indirect
+	github.com/spf13/cobra v1.1.1
+	github.com/spf13/jwalterweatherman v1.1.0 // indirect
 	github.com/spf13/pflag v1.0.5
 	github.com/spf13/viper v1.7.0
 	k8s.io/api v0.20.5
 	k8s.io/apimachinery v0.20.5
+	k8s.io/cli-runtime v0.20.5
 	k8s.io/client-go v0.20.5
-	k8s.io/cri-api v0.20.5 // indirect
-	k8s.io/kubernetes v1.20.5 // indirect
 )
 
 replace (
