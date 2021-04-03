@@ -1,6 +1,9 @@
 package tsdb
 
 import (
+	"strings"
+	"time"
+
 	"github.com/ihcsim/promdump/pkg/log"
 	"github.com/prometheus/prometheus/tsdb"
 )
@@ -30,19 +33,38 @@ func (t *Tsdb) Blocks(minTime, maxTime int64) ([]*tsdb.Block, error) {
 		return nil, err
 	}
 
+	var results []*tsdb.Block
 	defer func() {
-		_ = t.logger.Log("message", "closing connection to tsdb", "numBlocksFound", len(blocks))
+		_ = t.logger.Log("message", "closing connection to tsdb", "numBlocksFound", len(results))
 		_ = db.Close()
 	}()
 
-	var results []*tsdb.Block
+	var current string
 	for _, block := range blocks {
 		b, ok := block.(*tsdb.Block)
 		if !ok {
 			continue
 		}
 
-		if b.MaxTime() <= maxTime && b.MinTime() >= minTime {
+		var (
+			truncMinTime = b.MinTime() / int64(time.Microsecond)
+			truncMaxTime = b.MaxTime() / int64(time.Microsecond)
+			truncDir     = b.Dir()[len(t.dataDir)+2:]
+			blockDir     = truncDir
+		)
+		if i := strings.Index(truncDir, "/"); i != -1 {
+			blockDir = truncDir[:strings.Index(truncDir, "/")]
+		}
+
+		if truncMinTime >= minTime && truncMaxTime <= maxTime {
+			if blockDir != current {
+				current = blockDir
+				t.logger.Log("message", "retrieving block",
+					"name", b.Dir(),
+					"minTime", time.Unix(truncMinTime, 0),
+					"maxTime", time.Unix(truncMaxTime, 0),
+				)
+			}
 			results = append(results, b)
 		}
 	}

@@ -6,6 +6,7 @@ import (
 	"compress/gzip"
 	"flag"
 	"fmt"
+	"io"
 	"io/ioutil"
 	"os"
 	"path/filepath"
@@ -40,7 +41,8 @@ func main() {
 		return
 	}
 
-	_ = logger.Log("dataDir", dataDir,
+	_ = logger.Log("message", "starting promdump",
+		"dataDir", dataDir,
 		"maxTime", time.Unix(*maxTime, 0),
 		"minTime", time.Unix(*minTime, 0))
 
@@ -50,15 +52,24 @@ func main() {
 		exit(err)
 	}
 
-	fileLocation, err := compressed(blocks)
+	pipeReader, pipeWriter := io.Pipe()
+	defer pipeReader.Close()
+
+	go func() {
+		defer pipeWriter.Close()
+		if err := compressed(*dataDir, blocks, pipeWriter); err != nil {
+			logger.Log("message", "error closing pipeWriter", "reason", err)
+		}
+	}()
+
+	nbr, err := io.Copy(os.Stdout, pipeReader)
 	if err != nil {
 		exit(err)
 	}
-
-	_ = logger.Log("message", "finished", "outputFile", fileLocation)
+	logger.Log("message", "operation completed", "numBytesRead", nbr)
 }
 
-func compressed(blocks []*promtsdb.Block) (string, error) {
+func compressed(dataDir string, blocks []*promtsdb.Block, writer *io.PipeWriter) error {
 	var (
 		buf = &bytes.Buffer{}
 		tw  = tar.NewWriter(buf)
@@ -70,10 +81,10 @@ func compressed(blocks []*promtsdb.Block) (string, error) {
 				return err
 			}
 
-			_ = logger.Log("message", "reading data block", "path", path)
 			writeHeader := func(typeFlag byte) error {
+				name := path[len(dataDir)+2:]
 				header := &tar.Header{
-					Name:     path,
+					Name:     name,
 					Mode:     int64(info.Mode()),
 					ModTime:  info.ModTime(),
 					Size:     info.Size(),
@@ -103,12 +114,10 @@ func compressed(blocks []*promtsdb.Block) (string, error) {
 				return fmt.Errorf("failed to read data file: %w", err)
 			}
 
-			numBytesCompressed, err := tw.Write(data)
-			if err != nil {
+			if _, err := tw.Write(data); err != nil {
 				return fmt.Errorf("failed to write compressed file: %w", err)
 			}
 
-			_ = logger.Log("message", "read completed", "numBytesCompressed", numBytesCompressed)
 			return nil
 		}); err != nil {
 			_ = logger.Log("errors", err)
@@ -116,17 +125,13 @@ func compressed(blocks []*promtsdb.Block) (string, error) {
 	}
 
 	if err := tw.Close(); err != nil {
-		return "", err
+		return err
 	}
 
 	now := time.Now()
 	filename := fmt.Sprintf(filepath.Join(targetDir, "promdump-%s.tar.gz"), now.Format(timeFormat))
-	tarFile, err := os.Create(filename)
-	if err != nil {
-		return "", err
-	}
 
-	gwriter := gzip.NewWriter(tarFile)
+	gwriter := gzip.NewWriter(writer)
 	defer gwriter.Close()
 
 	gwriter.Header = gzip.Header{
@@ -136,10 +141,10 @@ func compressed(blocks []*promtsdb.Block) (string, error) {
 	}
 
 	if _, err := gwriter.Write(buf.Bytes()); err != nil {
-		return "", err
+		return err
 	}
 
-	return filename, nil
+	return nil
 }
 
 func exit(err error) {

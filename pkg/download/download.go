@@ -80,7 +80,10 @@ func (d *Download) Get(force bool, remoteURI, remoteURISHA string) (io.ReadClose
 }
 
 func (d *Download) download(remote, savedPath string) error {
-	_ = d.logger.Log("message", "downloading promdump", "endpoint", remote)
+	_ = d.logger.Log("message", "downloading promdump",
+		"remoteURI", remote,
+		"timeout", d.http.Timeout,
+		"localDir", savedPath)
 
 	resp, err := d.http.Get(remote)
 	if err != nil {
@@ -103,7 +106,10 @@ func (d *Download) download(remote, savedPath string) error {
 }
 
 func (d *Download) checksum(file *os.File, remote string) error {
-	_ = d.logger.Log("message", "verifying checksum", "endpoint", remote)
+	_ = d.logger.Log("message", "verifying checksum",
+		"endpoint", remote,
+		"timeout", d.http.Timeout,
+	)
 
 	resp, err := d.http.Get(remote)
 	if err != nil {

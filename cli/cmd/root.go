@@ -2,7 +2,9 @@ package main
 
 import (
 	"fmt"
+	"io/ioutil"
 	"os"
+	"strconv"
 	"time"
 
 	"github.com/ihcsim/promdump/pkg/config"
@@ -192,6 +194,14 @@ func k8sConfig(k8sConfigFlags *k8scliopts.ConfigFlags, fs *pflag.FlagSet) (*rest
 }
 
 func run(cmd *cobra.Command, config *config.Config, clientset *k8s.Clientset) error {
+	if err := uploadToContainer(cmd, config, clientset); err != nil {
+		return err
+	}
+
+	return dump(cmd, config, clientset)
+}
+
+func uploadToContainer(cmd *cobra.Command, config *config.Config, clientset *k8s.Clientset) error {
 	force, err := cmd.Flags().GetBool("force")
 	if err != nil {
 		return err
@@ -203,17 +213,8 @@ func run(cmd *cobra.Command, config *config.Config, clientset *k8s.Clientset) er
 		remoteURISHA = fmt.Sprintf("%s/promdump-%s.sha256", remoteHost, Version)
 		timeout      = config.GetDuration("download.timeout")
 		localDir     = config.GetString("download.localDir")
-		remoteDir    = config.GetString("prometheus.dataDir")
+		dataDir      = config.GetString("prometheus.dataDir")
 	)
-
-	_ = logger.Log("message", "read from config file",
-		"remoteHost", remoteHost,
-		"remoteURI", remoteURI,
-		"remoteURISHA", remoteURISHA,
-		"timeout", timeout,
-		"localDir", localDir,
-		"remoteDir", remoteDir)
-
 	if localDir == "" {
 		localDir = os.TempDir()
 	}
@@ -224,11 +225,25 @@ func run(cmd *cobra.Command, config *config.Config, clientset *k8s.Clientset) er
 		return fmt.Errorf("can't download promdump binary: %w", err)
 	}
 
-	execCmd := []string{"tar", "-C", remoteDir, "-xvf", "-"}
-	if err := clientset.ExecPod(execCmd, stdin, os.Stdout, os.Stderr, false); err != nil {
+	execCmd := []string{"tar", "-C", dataDir, "-xvf", "-"}
+	return clientset.ExecPod(execCmd, stdin, ioutil.Discard, os.Stderr, false)
+}
+
+func dump(cmd *cobra.Command, config *config.Config, clientset *k8s.Clientset) error {
+	maxTime, err := time.Parse(timeFormat, config.GetString("end-time"))
+	if err != nil {
 		return err
 	}
+	maxTimestamp := strconv.FormatInt(maxTime.Unix(), 10)
 
-	execCmd = []string{fmt.Sprintf("%s/promdump", remoteDir), "-help"}
+	minTime, err := time.Parse(timeFormat, config.GetString("start-time"))
+	if err != nil {
+		return err
+	}
+	minTimestamp := strconv.FormatInt(minTime.Unix(), 10)
+
+	dataDir := config.GetString("prometheus.dataDir")
+
+	execCmd := []string{fmt.Sprintf("%s/promdump", dataDir), "-min-time", minTimestamp, "-max-time", maxTimestamp}
 	return clientset.ExecPod(execCmd, os.Stdin, os.Stdout, os.Stderr, false)
 }

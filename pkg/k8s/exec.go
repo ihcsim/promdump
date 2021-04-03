@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"io"
 	"net/url"
+	"strings"
 
 	authzv1 "k8s.io/api/authorization/v1"
 	corev1 "k8s.io/api/core/v1"
@@ -29,6 +30,7 @@ func (c *Clientset) ExecPod(command []string, stdin io.Reader, stdout, stderr io
 	)
 
 	_ = c.logger.Log("message", "sending exec request",
+		"command", strings.Join(command, " "),
 		"namespace", ns,
 		"pod", pod,
 		"container", container,
@@ -107,6 +109,9 @@ func (c *Clientset) CanExec() error {
 		return deniedCreateExecErr
 	}
 
+	_ = c.logger.Log("message", "confirmed exec permissions",
+		"namespace", ns,
+		"request-timeout", timeout)
 	return nil
 }
 
