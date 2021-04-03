@@ -197,16 +197,12 @@ func run(cmd *cobra.Command, config *config.Config, clientset *k8s.Clientset) er
 	if err := uploadToContainer(cmd, config, clientset); err != nil {
 		return err
 	}
+	defer clean(config, clientset)
 
 	return dump(cmd, config, clientset)
 }
 
 func uploadToContainer(cmd *cobra.Command, config *config.Config, clientset *k8s.Clientset) error {
-	force, err := cmd.Flags().GetBool("force")
-	if err != nil {
-		return err
-	}
-
 	var (
 		remoteHost   = config.GetString("download.remoteHost")
 		remoteURI    = fmt.Sprintf("%s/promdump-%s.tar.gz", remoteHost, Version)
@@ -217,6 +213,11 @@ func uploadToContainer(cmd *cobra.Command, config *config.Config, clientset *k8s
 	)
 	if localDir == "" {
 		localDir = os.TempDir()
+	}
+
+	force, err := cmd.Flags().GetBool("force")
+	if err != nil {
+		return err
 	}
 
 	download := download.New(localDir, timeout, logger)
@@ -230,20 +231,24 @@ func uploadToContainer(cmd *cobra.Command, config *config.Config, clientset *k8s
 }
 
 func dump(cmd *cobra.Command, config *config.Config, clientset *k8s.Clientset) error {
+	dataDir := config.GetString("prometheus.dataDir")
 	maxTime, err := time.Parse(timeFormat, config.GetString("end-time"))
 	if err != nil {
 		return err
 	}
-	maxTimestamp := strconv.FormatInt(maxTime.Unix(), 10)
-
 	minTime, err := time.Parse(timeFormat, config.GetString("start-time"))
 	if err != nil {
 		return err
 	}
+	maxTimestamp := strconv.FormatInt(maxTime.Unix(), 10)
 	minTimestamp := strconv.FormatInt(minTime.Unix(), 10)
 
-	dataDir := config.GetString("prometheus.dataDir")
-
 	execCmd := []string{fmt.Sprintf("%s/promdump", dataDir), "-min-time", minTimestamp, "-max-time", maxTimestamp}
+	return clientset.ExecPod(execCmd, os.Stdin, os.Stdout, os.Stderr, false)
+}
+
+func clean(config *config.Config, clientset *k8s.Clientset) error {
+	dataDir := config.GetString("prometheus.dataDir")
+	execCmd := []string{"rm", "-f", fmt.Sprintf("%s/promdump", dataDir)}
 	return clientset.ExecPod(execCmd, os.Stdin, os.Stdout, os.Stderr, false)
 }
