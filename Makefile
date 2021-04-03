@@ -50,6 +50,8 @@ publish: build
 	rm -f "$(TARGET_DIR)/promdump-$(VERSION).tar.gz" "$(TARGET_DIR)/promdump-$(VERSION).sha256"
 	tar -C "$(TARGET_BIN_DIR)" -cvf "$(TARGET_DIR)/promdump-$(VERSION).tar.gz" promdump
 	shasum -a256 "$(TARGET_DIR)/promdump-$(VERSION).tar.gz"  | awk '{print $$1}' > "$(TARGET_DIR)/promdump-$(VERSION).sha256"
+	gsutil cp "$(TARGET_DIR)/promdump-$(VERSION).tar.gz" "$(TARGET_DIR)/promdump-$(VERSION).sha256" gs://promdump
+	gsutil acl ch -u AllUsers:R gs://promdump/promdump-$(VERSION).tar.gz gs://promdump/promdump-$(VERSION).sha256
 
 promdump_deploy: core
 	target_pod="$$(kubectl -n "$(NAMESPACE)" get po -oname | awk -F'/' '{print $$2}')" ;\
