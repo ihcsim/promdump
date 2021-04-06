@@ -58,7 +58,7 @@ func main() {
 	go func() {
 		defer pipeWriter.Close()
 		if err := compressed(*dataDir, blocks, pipeWriter); err != nil {
-			logger.Log("message", "error closing pipeWriter", "reason", err)
+			_ = logger.Log("message", "error closing pipeWriter", "reason", err)
 		}
 	}()
 
@@ -66,7 +66,7 @@ func main() {
 	if err != nil {
 		exit(err)
 	}
-	logger.Log("message", "operation completed", "numBytesRead", nbr)
+	_ = logger.Log("message", "operation completed", "numBytesRead", nbr)
 }
 
 func compressed(dataDir string, blocks []*promtsdb.Block, writer *io.PipeWriter) error {

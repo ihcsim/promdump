@@ -64,7 +64,7 @@ func (t *Tsdb) Blocks(minTime, maxTime int64) ([]*tsdb.Block, error) {
 			blockDir = truncDir[:strings.Index(truncDir, "/")]
 		}
 
-		t.logger.Log("message", "checking block",
+		_ = t.logger.Log("message", "checking block",
 			"path", b.Dir(),
 			"blockStartTime", blockStartTime,
 			"blockEndTime", blockEndTime,
@@ -74,11 +74,11 @@ func (t *Tsdb) Blocks(minTime, maxTime int64) ([]*tsdb.Block, error) {
 			(blockEndTime.Before(endTime) || blockEndTime.Equal(endTime)) {
 			if blockDir != current {
 				current = blockDir
-				t.logger.Log("message", "adding block", "name", b.Dir())
+				_ = t.logger.Log("message", "adding block", "name", b.Dir())
 			}
 			results = append(results, b)
 		} else {
-			t.logger.Log("message", "skipping block", "name", b.Dir())
+			_ = t.logger.Log("message", "skipping block", "name", b.Dir())
 		}
 	}
 
