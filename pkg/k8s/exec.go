@@ -20,12 +20,6 @@ var deniedCreateExecErr = fmt.Errorf("no permissions to create exec subresource"
 // ExecPod issues an exec request to execute the given command to a particular
 // pod.
 func (c *Clientset) ExecPod(command []string, stdin io.Reader, stdout, stderr io.Writer, tty bool) error {
-	readCloser, err := NewReadCloser(stdin)
-	if err != nil {
-		return err
-	}
-	defer readCloser.Close()
-
 	var (
 		ns             = c.config.GetString("namespace")
 		pod            = c.config.GetString("pod")

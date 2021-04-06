@@ -82,7 +82,7 @@ func compressed(dataDir string, blocks []*promtsdb.Block, writer *io.PipeWriter)
 			}
 
 			writeHeader := func(typeFlag byte) error {
-				name := path[len(dataDir)+2:]
+				name := path[len(dataDir)+1:]
 				header := &tar.Header{
 					Name:     name,
 					Mode:     int64(info.Mode()),

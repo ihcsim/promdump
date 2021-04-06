@@ -2,6 +2,7 @@ package main
 
 import (
 	"fmt"
+	"io"
 	"io/ioutil"
 	"os"
 	"strconv"
@@ -25,21 +26,20 @@ var (
 	defaultNamespace      = "default"
 	defaultRequestTimeout = "10s"
 
+	appConfig      *config.Config
+	clientset      *k8s.Clientset
+	k8sConfigFlags *k8scliopts.ConfigFlags
+
 	// Version is the version of the CLI, set during build time
 	Version = "v0.1.0"
 )
 
 func initRootCmd() (*cobra.Command, error) {
-	var (
-		appConfig      *config.Config
-		clientset      *k8s.Clientset
-		k8sConfigFlags *k8scliopts.ConfigFlags
-	)
-
 	rootCmd := &cobra.Command{
-		Use:           "promdump",
-		Example:       "",
-		Short:         "A tool to dump Prometheus tsdb samples within a time range",
+		Use:   "promdump",
+		Short: "A tool to dump Prometheus tsdb samples within the specified time range",
+		Example: `promdump -p prometheus-5c465dfc89-w72xp -n prometheus --start-time "2021-01-01 00:00:00" --end-time "2021-04-02 16:59:00" > dump.tar.gz
+`,
 		Long:          ``,
 		Version:       Version,
 		SilenceErrors: true, // let main() handles errors
@@ -86,7 +86,7 @@ func initRootCmd() (*cobra.Command, error) {
 
 	rootCmd.PersistentFlags().StringP("pod", "p", "", "targeted Prometheus pod name")
 	rootCmd.PersistentFlags().StringP("container", "c", "prometheus", "targeted Prometheus container name")
-	rootCmd.Flags().BoolP("force", "f", false, "force the re-download of the promdump TAR file, which is saved to the local $TMP folder")
+	rootCmd.Flags().BoolP("force", "f", false, "force the re-download of the promdump binary, which is saved to the local $TMP folder")
 	rootCmd.Flags().String("start-time", defaultStartTime.Format(timeFormat), "start time (UTC) of the samples (yyyy-mm-dd hh:mm:ss)")
 	rootCmd.Flags().String("end-time", defaultEndTime.Format(timeFormat), "end time (UTC) of the samples (yyyy-mm-dd hh:mm:ss")
 
@@ -194,43 +194,51 @@ func k8sConfig(k8sConfigFlags *k8scliopts.ConfigFlags, fs *pflag.FlagSet) (*rest
 }
 
 func run(cmd *cobra.Command, config *config.Config, clientset *k8s.Clientset) error {
-	if err := uploadToContainer(cmd, config, clientset); err != nil {
+	bin, err := downloadBinary(cmd, config)
+	if err != nil {
 		return err
 	}
-	defer clean(config, clientset)
 
-	return dump(cmd, config, clientset)
+	if err := uploadToContainer(bin, config, clientset); err != nil {
+		return err
+	}
+	defer func() {
+		_ = clean(config, clientset)
+	}()
+
+	return dumpSamples(config, clientset)
 }
 
-func uploadToContainer(cmd *cobra.Command, config *config.Config, clientset *k8s.Clientset) error {
+func downloadBinary(cmd *cobra.Command, config *config.Config) (io.Reader, error) {
 	var (
 		remoteHost   = config.GetString("download.remoteHost")
 		remoteURI    = fmt.Sprintf("%s/promdump-%s.tar.gz", remoteHost, Version)
 		remoteURISHA = fmt.Sprintf("%s/promdump-%s.sha256", remoteHost, Version)
-		timeout      = config.GetDuration("download.timeout")
-		localDir     = config.GetString("download.localDir")
-		dataDir      = config.GetString("prometheus.dataDir")
+
+		localDir = config.GetString("download.localDir")
+		timeout  = config.GetDuration("download.timeout")
 	)
+
 	if localDir == "" {
 		localDir = os.TempDir()
 	}
 
 	force, err := cmd.Flags().GetBool("force")
 	if err != nil {
-		return err
+		return nil, err
 	}
 
 	download := download.New(localDir, timeout, logger)
-	stdin, err := download.Get(force, remoteURI, remoteURISHA)
-	if err != nil {
-		return fmt.Errorf("can't download promdump binary: %w", err)
-	}
-
-	execCmd := []string{"tar", "-C", dataDir, "-xvf", "-"}
-	return clientset.ExecPod(execCmd, stdin, ioutil.Discard, os.Stderr, false)
+	return download.Get(force, remoteURI, remoteURISHA)
 }
 
-func dump(cmd *cobra.Command, config *config.Config, clientset *k8s.Clientset) error {
+func uploadToContainer(bin io.Reader, config *config.Config, clientset *k8s.Clientset) error {
+	dataDir := config.GetString("prometheus.dataDir")
+	execCmd := []string{"tar", "-C", dataDir, "-xzvf", "-"}
+	return clientset.ExecPod(execCmd, bin, ioutil.Discard, os.Stderr, false)
+}
+
+func dumpSamples(config *config.Config, clientset *k8s.Clientset) error {
 	dataDir := config.GetString("prometheus.dataDir")
 	maxTime, err := time.Parse(timeFormat, config.GetString("end-time"))
 	if err != nil {

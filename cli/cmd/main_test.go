@@ -11,10 +11,7 @@ import (
 	"github.com/spf13/pflag"
 )
 
-var (
-	cmd       *cobra.Command
-	appConfig *config.Config
-)
+var cmd *cobra.Command
 
 func TestConfig(t *testing.T) {
 	if err := initFixtures(); err != nil {

@@ -14,7 +14,10 @@ func main() {
 	if err != nil {
 		exitWithErr(err)
 	}
-	_ = initRestoreCmd(rootCmd)
+
+	if _, err := initRestoreCmd(rootCmd); err != nil {
+		exitWithErr(err)
+	}
 
 	if err := rootCmd.Execute(); err != nil {
 		exitWithErr(err)
