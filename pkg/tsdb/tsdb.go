@@ -21,10 +21,10 @@ func New(dataDir string, logger *log.Logger) *Tsdb {
 
 // Blocks looks for data blocks that fall within the provided time range, in the
 // data directory.
-func (t *Tsdb) Blocks(minTime, maxTime int64) ([]*tsdb.Block, error) {
+func (t *Tsdb) Blocks(minTimeNano, maxTimeNano int64) ([]*tsdb.Block, error) {
 	var (
-		startTime = time.Unix(minTime/int64(time.Microsecond), 0)
-		endTime   = time.Unix(maxTime/int64(time.Microsecond), 0)
+		startTime = time.Unix(0, minTimeNano)
+		endTime   = time.Unix(0, maxTimeNano)
 	)
 	_ = t.logger.Log("message", "accessing tsdb",
 		"datadir", t.dataDir,
@@ -55,8 +55,8 @@ func (t *Tsdb) Blocks(minTime, maxTime int64) ([]*tsdb.Block, error) {
 		}
 
 		var (
-			blockStartTime = time.Unix(b.MinTime()/int64(time.Microsecond), 0)
-			blockEndTime   = time.Unix(b.MaxTime()/int64(time.Microsecond), 0)
+			blockStartTime = time.Unix(0, nanoseconds(b.MinTime()))
+			blockEndTime   = time.Unix(0, nanoseconds(b.MaxTime()))
 			truncDir       = b.Dir()[len(t.dataDir)+1:]
 			blockDir       = truncDir
 		)
@@ -83,4 +83,8 @@ func (t *Tsdb) Blocks(minTime, maxTime int64) ([]*tsdb.Block, error) {
 	}
 
 	return results, nil
+}
+
+func nanoseconds(milliseconds int64) int64 {
+	return milliseconds * 1000000
 }

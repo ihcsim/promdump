@@ -30,8 +30,8 @@ func main() {
 		defaultMinTime = defaultMaxTime.Add(-2 * time.Hour)
 
 		dataDir = flag.String("data-dir", "/prometheus", "path to the Prometheus data directory")
-		maxTime = flag.Int64("max-time", defaultMaxTime.Unix(), "maximum timestamp of the data")
-		minTime = flag.Int64("min-time", defaultMinTime.Unix(), "minimum timestamp of the data")
+		minTime = flag.Int64("min-time", defaultMinTime.UnixNano(), "lower bound of the timestamp range (in nanoseconds)")
+		maxTime = flag.Int64("max-time", defaultMaxTime.UnixNano(), "upper bound of the timestamp range (in nanoseconds)")
 		help    = flag.Bool("help", false, "show usage")
 	)
 	flag.Parse()
@@ -43,8 +43,8 @@ func main() {
 
 	_ = logger.Log("message", "starting promdump",
 		"dataDir", dataDir,
-		"maxTime", time.Unix(*maxTime, 0),
-		"minTime", time.Unix(*minTime, 0))
+		"minTime", time.Unix(0, *minTime),
+		"maxTime", time.Unix(0, *maxTime))
 
 	tsdb := tsdb.New(*dataDir, logger)
 	blocks, err := tsdb.Blocks(*minTime, *maxTime)

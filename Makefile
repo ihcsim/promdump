@@ -51,8 +51,8 @@ cli:
 
 .PHONY: dist
 dist:
-	rm -rf $(TARGET_DIST_DIR)
-	mkdir -p $(TARGET_DIST_DIR)
+	rm -rf "$(TARGET_DIST_DIR)"
+	mkdir -p "$(TARGET_DIST_DIR)"
 	tar -C "$(TARGET_BIN_DIR)" -czvf "$(TARGET_DIST_DIR)/promdump-$(VERSION).tar.gz" promdump
 	shasum -a256 "$(TARGET_DIST_DIR)/promdump-$(VERSION).tar.gz"  | awk '{print $$1}' > "$(TARGET_DIST_DIR)/promdump-$(VERSION).tar.gz.sha256"
 	gsutil cp "$(TARGET_DIST_DIR)/promdump-$(VERSION).tar.gz" "$(TARGET_DIST_DIR)/promdump-$(VERSION).tar.gz.sha256" gs://promdump
@@ -60,8 +60,8 @@ dist:
 
 .PHONY: release
 release: test
-	rm -rf $(TARGET_RELEASE_DIR) ;\
-	mkdir -p $(TARGET_RELEASE_DIR) ;\
+	rm -rf "$(TARGET_RELEASE_DIR)" ;\
+	mkdir -p "$(TARGET_RELEASE_DIR)" ;\
 	arch=( amd64 386 );\
 	goos=( linux darwin windows ) ;\
 	for arch in "$${arch[@]}" ; do \

@@ -4,7 +4,6 @@ import (
 	"io/ioutil"
 	"os"
 	"testing"
-	"time"
 
 	"github.com/ihcsim/promdump/pkg/log"
 	"github.com/prometheus/prometheus/pkg/labels"
@@ -25,58 +24,69 @@ func TestBlocks(t *testing.T) {
 			0: []*tsdb.MetricSample{
 				// 2021-04-01 20:30:31 GMT
 				{
-					TimestampMs: int64(1617309031 * int64(time.Microsecond)),
+					TimestampMs: 1617309031000,
 					Labels:      []labels.Label{{Name: "job", Value: "tsdb"}},
 				},
 
 				// 2021-04-01 20:00:31 GMT
 				{
-					TimestampMs: int64(1617307231 * int64(time.Microsecond)),
+					TimestampMs: 1617307231000,
 					Labels:      []labels.Label{{Name: "job", Value: "tsdb"}},
 				},
 
 				// 2021-04-01 19:31:00 GMT
 				{
-					TimestampMs: int64(1617305631 * int64(time.Microsecond)),
+					TimestampMs: 1617305631000,
 					Labels:      []labels.Label{{Name: "job", Value: "tsdb"}},
 				},
 			},
 
 			1: []*tsdb.MetricSample{
 				// 2021-03-30 01:06:47 GMT
-				{TimestampMs: int64(1617066407 * int64(time.Microsecond)), Labels: []labels.Label{{Name: "job", Value: "tsdb"}}},
+				{
+					TimestampMs: 1617066407000,
+					Labels:      []labels.Label{{Name: "job", Value: "tsdb"}},
+				},
+
 				// 2021-03-30 02:36:00 GMT
-				{TimestampMs: int64(1617071760 * int64(time.Microsecond)), Labels: []labels.Label{{Name: "job", Value: "tsdb"}}},
+				{
+					TimestampMs: 1617071760000,
+					Labels:      []labels.Label{{Name: "job", Value: "tsdb"}},
+				},
+
 				// 2021-03-30 03:01:46 GMT
-				{TimestampMs: int64(1617073308 * int64(time.Microsecond)), Labels: []labels.Label{{Name: "job", Value: "tsdb"}}},
+				{
+					TimestampMs: 1617073308000,
+					Labels:      []labels.Label{{Name: "job", Value: "tsdb"}},
+				},
 			},
 		}
 	)
 
 	var timeRanges = []struct {
-		minTime int64
-		maxTime int64
+		minTimeMs int64
+		maxTimeMs int64
 	}{
 		// 2021-04-01 20:52:31 GMT to 2021-04-01 18:52:31 GMT
 		{
-			minTime: int64(1617303151 * int64(time.Microsecond)),
-			maxTime: int64(1617310351 * int64(time.Microsecond)),
+			minTimeMs: 1617303151000,
+			maxTimeMs: 1617310351000,
 		},
 
 		// 2021-03-30 01:05:00 GMT to 2021-03-30 03:05:00 GMT
 		{
-			minTime: int64(1617066300 * int64(time.Microsecond)),
-			maxTime: int64(1617073500 * int64(time.Microsecond)),
+			minTimeMs: 1617066300000,
+			maxTimeMs: 1617073500000,
 		},
 	}
 
 	tsdb := New(tempDir, logger)
 	for i, tr := range timeRanges {
-		if _, err := promtsdb.CreateBlock(series[i], tempDir, tr.minTime, tr.maxTime, logger.Logger); err != nil {
+		if _, err := promtsdb.CreateBlock(series[i], tempDir, tr.minTimeMs, tr.maxTimeMs, logger.Logger); err != nil {
 			t.Fatalf("test case %d has unexpected error: %s", i, err)
 		}
 
-		blocks, err := tsdb.Blocks(tr.minTime, tr.maxTime)
+		blocks, err := tsdb.Blocks(nanoseconds(tr.minTimeMs), nanoseconds(tr.maxTimeMs))
 		if err != nil {
 			t.Fatalf("test case %d has unexpected error: %s", i, err)
 		}
