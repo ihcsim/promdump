@@ -2,6 +2,7 @@ package log
 
 import (
 	"io"
+	"time"
 
 	"github.com/go-kit/kit/log"
 )
@@ -15,9 +16,14 @@ type Logger struct {
 func New(out io.Writer) *Logger {
 	logger := log.NewLogfmtLogger(out)
 	logger = log.With(logger,
-		"timestamp", log.DefaultTimestamp,
-		"caller", log.DefaultCaller)
+		"time", log.TimestampFormat(now, time.RFC3339),
+		"caller", log.DefaultCaller,
+	)
 	return &Logger{logger}
+}
+
+func now() time.Time {
+	return time.Now()
 }
 
 // With returns a new contextual logger with keyvals prepended to those passed
