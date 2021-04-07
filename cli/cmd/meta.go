@@ -9,7 +9,7 @@ import (
 	"github.com/spf13/cobra"
 )
 
-func initMetaCmd(rootCmd *cobra.Command) (*cobra.Command, error) {
+func initMetaCmd(rootCmd *cobra.Command) *cobra.Command {
 	metaCmd := &cobra.Command{
 		Use:           "meta",
 		Short:         "Show the metadata of the TSDB.",
@@ -30,7 +30,7 @@ func initMetaCmd(rootCmd *cobra.Command) (*cobra.Command, error) {
 	}
 
 	rootCmd.AddCommand(metaCmd)
-	return metaCmd, nil
+	return metaCmd
 }
 
 func runMeta(cmd *cobra.Command, config *config.Config, clientset *k8s.Clientset) error {

@@ -15,11 +15,8 @@ func main() {
 		exitWithErr(err)
 	}
 
+	_ = initMetaCmd(rootCmd)
 	if _, err := initRestoreCmd(rootCmd); err != nil {
-		exitWithErr(err)
-	}
-
-	if _, err := initMetaCmd(rootCmd); err != nil {
 		exitWithErr(err)
 	}
 
