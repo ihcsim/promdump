@@ -4,7 +4,6 @@ import (
 	"archive/tar"
 	"bytes"
 	"compress/gzip"
-	"encoding/json"
 	"flag"
 	"fmt"
 	"io"
@@ -18,7 +17,10 @@ import (
 	promtsdb "github.com/prometheus/prometheus/tsdb"
 )
 
-const timeFormat = "2006-01-02-150405"
+const (
+	timeFormatFile = "2006-01-02-150405"
+	timeFormatOut  = "2006-01-02 15:04:05"
+)
 
 var (
 	logger    = log.New(os.Stderr)
@@ -75,12 +77,17 @@ func main() {
 }
 
 func writeMeta(meta *tsdb.Meta) (int64, error) {
-	b, err := json.Marshal(meta)
-	if err != nil {
-		return 0, err
-	}
+	output := fmt.Sprintf(`Earliest time:          | %s
+Latest time:            | %s
+Total number of blocks  | %d
+Total number of samples | %d
+Total number of series  | %d
+Total size              | %d
+`,
+		meta.Start.Format(timeFormatOut), meta.End.Format(timeFormatOut),
+		meta.BlockCount, meta.TotalSamples, meta.TotalSeries, meta.TotalSize)
 
-	buf := bytes.NewBuffer(b)
+	buf := bytes.NewBuffer([]byte(output))
 	return io.Copy(os.Stdout, buf)
 }
 
@@ -158,7 +165,7 @@ func compressed(dataDir string, blocks []*promtsdb.Block, writer *io.PipeWriter)
 	}
 
 	now := time.Now()
-	filename := fmt.Sprintf(filepath.Join(targetDir, "promdump-%s.tar.gz"), now.Format(timeFormat))
+	filename := fmt.Sprintf(filepath.Join(targetDir, "promdump-%s.tar.gz"), now.Format(timeFormatFile))
 
 	gwriter := gzip.NewWriter(writer)
 	defer gwriter.Close()
