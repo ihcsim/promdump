@@ -41,17 +41,17 @@ var (
 func initRootCmd() (*cobra.Command, error) {
 	rootCmd := &cobra.Command{
 		Use:   "promdump",
-		Short: "Dumps Prometheus TSDB samples that falls within a time range for transfer to another Prometheus instance",
+		Short: "Dumps Prometheus samples that falls within a provided time range, for transfer to another Prometheus instance",
 		Example: `promdump -p prometheus-5c465dfc89-w72xp -n prometheus --start-time "2021-01-01 00:00:00" --end-time "2021-04-02 16:59:00" > dump.tar.gz
 `,
-		Long: `promdump dumps Prometheus TSDB samples that falls within a time range,
-for transfer to another Prometheus instance.
+		Long: `promdump dumps Prometheus samples that falls within a provided time
+range, for transfer to another Prometheus instance.
 
 It is different from 'promtool tsdb dump' as its output can be copied over to
 another Prometheus instance[1]. And unlike the Promethues TSDB snapshot API,
 promdump doesn't require Prometheus to be started with the --web.enable-admin-api
-option. promdump offers the flexibility to capture data that falls within a
-specific time range.
+option. Instead of dumping the entire TSDB, promdump offers the flexibility to
+capture data that falls within a specific time range.
 
 When run, the promdump CLI downloads the promdump tar.gz file from a public
 Cloud Storage bucket to your local /tmp folder. The download will be skipped if
