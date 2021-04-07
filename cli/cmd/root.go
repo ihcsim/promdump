@@ -37,7 +37,7 @@ var (
 func initRootCmd() (*cobra.Command, error) {
 	rootCmd := &cobra.Command{
 		Use:   "promdump",
-		Short: "A tool to dump Prometheus tsdb samples within the specified time range",
+		Short: "A tool to dump Prometheus TSDB samples within the specified time range",
 		Example: `promdump -p prometheus-5c465dfc89-w72xp -n prometheus --start-time "2021-01-01 00:00:00" --end-time "2021-04-02 16:59:00" > dump.tar.gz
 `,
 		Long:          ``,
@@ -86,7 +86,7 @@ func initRootCmd() (*cobra.Command, error) {
 
 	rootCmd.PersistentFlags().StringP("pod", "p", "", "targeted Prometheus pod name")
 	rootCmd.PersistentFlags().StringP("container", "c", "prometheus", "targeted Prometheus container name")
-	rootCmd.Flags().BoolP("force", "f", false, "force the re-download of the promdump binary, which is saved to the local $TMP folder")
+	rootCmd.PersistentFlags().BoolP("force", "f", false, "force the re-download of the promdump binary, which is saved to the local $TMP folder")
 	rootCmd.Flags().String("start-time", defaultStartTime.Format(timeFormat), "start time (UTC) of the samples (yyyy-mm-dd hh:mm:ss)")
 	rootCmd.Flags().String("end-time", defaultEndTime.Format(timeFormat), "end time (UTC) of the samples (yyyy-mm-dd hh:mm:ss")
 

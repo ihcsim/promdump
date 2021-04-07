@@ -19,6 +19,10 @@ func main() {
 		exitWithErr(err)
 	}
 
+	if _, err := initMetaCmd(rootCmd); err != nil {
+		exitWithErr(err)
+	}
+
 	if err := rootCmd.Execute(); err != nil {
 		exitWithErr(err)
 	}

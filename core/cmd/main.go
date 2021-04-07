@@ -4,6 +4,7 @@ import (
 	"archive/tar"
 	"bytes"
 	"compress/gzip"
+	"encoding/json"
 	"flag"
 	"fmt"
 	"io"
@@ -29,10 +30,11 @@ func main() {
 		defaultMaxTime = time.Now()
 		defaultMinTime = defaultMaxTime.Add(-2 * time.Hour)
 
-		dataDir = flag.String("data-dir", "/prometheus", "path to the Prometheus data directory")
-		minTime = flag.Int64("min-time", defaultMinTime.UnixNano(), "lower bound of the timestamp range (in nanoseconds)")
-		maxTime = flag.Int64("max-time", defaultMaxTime.UnixNano(), "upper bound of the timestamp range (in nanoseconds)")
-		help    = flag.Bool("help", false, "show usage")
+		dataDir  = flag.String("data-dir", "/prometheus", "path to the Prometheus data directory")
+		minTime  = flag.Int64("min-time", defaultMinTime.UnixNano(), "lower bound of the timestamp range (in nanoseconds)")
+		maxTime  = flag.Int64("max-time", defaultMaxTime.UnixNano(), "upper bound of the timestamp range (in nanoseconds)")
+		showMeta = flag.Bool("meta", false, "retrieve the Promtheus TSDB metadata")
+		help     = flag.Bool("help", false, "show usage")
 	)
 	flag.Parse()
 
@@ -41,32 +43,55 @@ func main() {
 		return
 	}
 
-	_ = logger.Log("message", "starting promdump",
-		"dataDir", dataDir,
-		"minTime", time.Unix(0, *minTime),
-		"maxTime", time.Unix(0, *maxTime))
-
 	tsdb := tsdb.New(*dataDir, logger)
+	if *showMeta {
+		meta, err := tsdb.Meta()
+		if err != nil {
+			exit(err)
+		}
+
+		if _, err := writeMeta(meta); err != nil {
+			exit(err)
+		}
+
+		return
+	}
+
 	blocks, err := tsdb.Blocks(*minTime, *maxTime)
 	if err != nil {
 		exit(err)
 	}
 
+	nbr, err := writeBlocks(*dataDir, blocks, os.Stdout)
+	if err != nil {
+		exit(err)
+	}
+
+	_ = logger.Log("message", "operation completed", "numBytesRead", nbr)
+}
+
+func writeMeta(meta *tsdb.Meta) (int64, error) {
+	b, err := json.Marshal(meta)
+	if err != nil {
+		return 0, err
+	}
+
+	buf := bytes.NewBuffer(b)
+	return io.Copy(os.Stdout, buf)
+}
+
+func writeBlocks(dataDir string, blocks []*promtsdb.Block, w io.Writer) (int64, error) {
 	pipeReader, pipeWriter := io.Pipe()
 	defer pipeReader.Close()
 
 	go func() {
 		defer pipeWriter.Close()
-		if err := compressed(*dataDir, blocks, pipeWriter); err != nil {
+		if err := compressed(dataDir, blocks, pipeWriter); err != nil {
 			_ = logger.Log("message", "error closing pipeWriter", "reason", err)
 		}
 	}()
 
-	nbr, err := io.Copy(os.Stdout, pipeReader)
-	if err != nil {
-		exit(err)
-	}
-	_ = logger.Log("message", "operation completed", "numBytesRead", nbr)
+	return io.Copy(w, pipeReader)
 }
 
 func compressed(dataDir string, blocks []*promtsdb.Block, writer *io.PipeWriter) error {

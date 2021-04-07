@@ -14,7 +14,7 @@ import (
 func initRestoreCmd(rootCmd *cobra.Command) (*cobra.Command, error) {
 	restoreCmd := &cobra.Command{
 		Use:   "restore",
-		Short: "Restore Prometheus tsdb samples dump.",
+		Short: "Restore Prometheus TSDB samples dump.",
 		Example: `promdump restore -p prometheus-5c465dfc89-w72xp -n prometheus -d dump.tar.gz
 `,
 		SilenceErrors: true, // let main() handles errors

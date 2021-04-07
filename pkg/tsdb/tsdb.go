@@ -14,6 +14,18 @@ type Tsdb struct {
 	logger  *log.Logger
 }
 
+// Meta contains metadata for a TSDB instance.
+type Meta struct {
+	BlockCount int
+
+	Start time.Time
+	End   time.Time
+
+	TotalSamples uint64
+	TotalSeries  uint64
+	TotalSize    int64
+}
+
 // New returns a new instance of Tsdb.
 func New(dataDir string, logger *log.Logger) *Tsdb {
 	return &Tsdb{dataDir, logger}
@@ -23,8 +35,8 @@ func New(dataDir string, logger *log.Logger) *Tsdb {
 // data directory.
 func (t *Tsdb) Blocks(minTimeNano, maxTimeNano int64) ([]*tsdb.Block, error) {
 	var (
-		startTime = time.Unix(0, minTimeNano)
-		endTime   = time.Unix(0, maxTimeNano)
+		startTime = time.Unix(0, minTimeNano).UTC()
+		endTime   = time.Unix(0, maxTimeNano).UTC()
 	)
 	_ = t.logger.Log("message", "accessing tsdb",
 		"datadir", t.dataDir,
@@ -55,8 +67,74 @@ func (t *Tsdb) Blocks(minTimeNano, maxTimeNano int64) ([]*tsdb.Block, error) {
 		}
 
 		var (
-			blockStartTime = time.Unix(0, nanoseconds(b.MinTime()))
-			blockEndTime   = time.Unix(0, nanoseconds(b.MaxTime()))
+			blockStartTime = time.Unix(0, nanoseconds(b.MinTime())).UTC()
+			blockEndTime   = time.Unix(0, nanoseconds(b.MaxTime())).UTC()
+			truncDir       = b.Dir()[len(t.dataDir)+1:]
+			blockDir       = truncDir
+		)
+		if i := strings.Index(truncDir, "/"); i != -1 {
+			blockDir = truncDir[:strings.Index(truncDir, "/")]
+		}
+
+		_ = t.logger.Log("message", "checking block",
+			"path", blockDir,
+			"blockStartTime (utc)", blockStartTime,
+			"blockEndTime (utc)", blockEndTime,
+		)
+
+		if startTime.Equal(blockStartTime) || endTime.Equal(blockEndTime) ||
+			(endTime.After(blockStartTime) && endTime.Before(blockEndTime)) ||
+			(startTime.After(blockStartTime) && startTime.Before(blockEndTime)) ||
+			(startTime.Before(blockStartTime) && endTime.After(blockEndTime)) {
+
+			if blockDir != current {
+				current = blockDir
+				_ = t.logger.Log("message", "adding block", "path", blockDir)
+			}
+			results = append(results, b)
+		} else {
+			_ = t.logger.Log("message", "skipping block", "path", blockDir)
+		}
+	}
+
+	return results, nil
+}
+
+// Meta returns metadata of the TSDB instance.
+func (t *Tsdb) Meta() (*Meta, error) {
+	_ = t.logger.Log("message", "retrieving tsdb metadata", "datadir", t.dataDir)
+	db, err := tsdb.OpenDBReadOnly(t.dataDir, t.logger.Logger)
+	if err != nil {
+		return nil, err
+	}
+
+	blocks, err := db.Blocks()
+	if err != nil {
+		return nil, err
+	}
+
+	defer func() {
+		_ = t.logger.Log("message", "closing connection to tsdb")
+		_ = db.Close()
+	}()
+
+	var (
+		earliest time.Time
+		latest   time.Time
+
+		totalSize    int64
+		totalSamples uint64
+		totalSeries  uint64
+	)
+	for _, block := range blocks {
+		b, ok := block.(*tsdb.Block)
+		if !ok {
+			continue
+		}
+
+		var (
+			blockStartTime = time.Unix(0, nanoseconds(b.MinTime())).UTC()
+			blockEndTime   = time.Unix(0, nanoseconds(b.MaxTime())).UTC()
 			truncDir       = b.Dir()[len(t.dataDir)+1:]
 			blockDir       = truncDir
 		)
@@ -70,19 +148,27 @@ func (t *Tsdb) Blocks(minTimeNano, maxTimeNano int64) ([]*tsdb.Block, error) {
 			"blockEndTime", blockEndTime,
 		)
 
-		if (blockStartTime.After(startTime) || blockStartTime.Equal(startTime)) &&
-			(blockEndTime.Before(endTime) || blockEndTime.Equal(endTime)) {
-			if blockDir != current {
-				current = blockDir
-				_ = t.logger.Log("message", "adding block", "path", blockDir)
-			}
-			results = append(results, b)
-		} else {
-			_ = t.logger.Log("message", "skipping block", "path", blockDir)
+		totalSize += b.Size()
+		totalSamples += b.Meta().Stats.NumSamples
+		totalSeries += b.Meta().Stats.NumSeries
+
+		if blockStartTime.Before(earliest) || earliest.IsZero() {
+			earliest = blockStartTime
+		}
+
+		if blockEndTime.After(latest) || latest.IsZero() {
+			latest = blockEndTime
 		}
 	}
 
-	return results, nil
+	return &Meta{
+		BlockCount:   len(blocks),
+		Start:        earliest,
+		End:          latest,
+		TotalSamples: totalSamples,
+		TotalSize:    totalSize,
+		TotalSeries:  totalSeries,
+	}, nil
 }
 
 func nanoseconds(milliseconds int64) int64 {
