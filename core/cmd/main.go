@@ -43,6 +43,10 @@ func main() {
 		return
 	}
 
+	if err := validateTimestamp(*minTime, *maxTime); err != nil {
+		exit(err)
+	}
+
 	tsdb := tsdb.New(*dataDir, logger)
 	if *showMeta {
 		meta, err := tsdb.Meta()
@@ -167,6 +171,23 @@ func compressed(dataDir string, blocks []*promtsdb.Block, writer *io.PipeWriter)
 
 	if _, err := gwriter.Write(buf.Bytes()); err != nil {
 		return err
+	}
+
+	return nil
+}
+
+func validateTimestamp(minTime, maxTime int64) error {
+	if minTime > maxTime {
+		return fmt.Errorf("min-time (%d) cannot exceed max-time (%d)", minTime, maxTime)
+	}
+
+	now := time.Now().UnixNano()
+	if minTime > now {
+		return fmt.Errorf("min-time (%d) cannot exceed now (%d)", minTime, now)
+	}
+
+	if maxTime > now {
+		return fmt.Errorf("max-time (%d) cannot exceed now (%d)", maxTime, now)
 	}
 
 	return nil

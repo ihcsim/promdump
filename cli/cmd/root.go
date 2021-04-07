@@ -146,7 +146,16 @@ func validate(cmd *cobra.Command) error {
 	}
 
 	if startTime.After(endTime) {
-		return fmt.Errorf("invalid time range. start time (%s) must occur before end time (%s).", argStartTime, argEndTime)
+		return fmt.Errorf("start time (%s) cannot be after end time (%s)", argStartTime, argEndTime)
+	}
+
+	now := time.Now()
+	if startTime.After(now) {
+		return fmt.Errorf("start time (%s) cannot be after now (%s)", argStartTime, now.Format(timeFormat))
+	}
+
+	if endTime.After(now) {
+		return fmt.Errorf("end time (%s) cannot be after now (%s)", argEndTime, now.Format(timeFormat))
 	}
 
 	return nil
