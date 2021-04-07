@@ -13,7 +13,7 @@ TARGET_BIN_DIR = $(TARGET_DIR)/bin
 TARGET_DIST_DIR = $(TARGET_DIR)/dist
 TARGET_RELEASE_DIR = $(TARGET_DIR)/$(VERSION)
 
-dev: test lint build dist
+all: test lint build dist
 
 build: prebuild core cli
 prebuild:

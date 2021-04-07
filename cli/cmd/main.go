@@ -3,11 +3,7 @@ package main
 import (
 	"fmt"
 	"os"
-
-	"github.com/ihcsim/promdump/pkg/log"
 )
-
-var logger = log.New(os.Stderr)
 
 func main() {
 	rootCmd, err := initRootCmd()

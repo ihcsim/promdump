@@ -8,6 +8,8 @@ import (
 	"strconv"
 	"time"
 
+	"github.com/ihcsim/promdump/pkg/log"
+
 	"github.com/ihcsim/promdump/pkg/config"
 	"github.com/ihcsim/promdump/pkg/download"
 	"github.com/ihcsim/promdump/pkg/k8s"
@@ -29,6 +31,8 @@ var (
 	appConfig      *config.Config
 	clientset      *k8s.Clientset
 	k8sConfigFlags *k8scliopts.ConfigFlags
+
+	logger *log.Logger
 
 	// Version is the version of the CLI, set during build time
 	Version = "dev"
@@ -96,6 +100,7 @@ Prometheus instance.
 				return fmt.Errorf("failed to init k8s config: %w", err)
 			}
 
+			initLogger()
 			clientset, err = k8s.NewClientset(appConfig, k8sConfig, logger)
 			if err != nil {
 				return fmt.Errorf("failed to init k8s client: %w", err)
@@ -111,6 +116,7 @@ Prometheus instance.
 
 	rootCmd.PersistentFlags().StringP("pod", "p", "", "targeted Prometheus pod name")
 	rootCmd.PersistentFlags().StringP("container", "c", "prometheus", "targeted Prometheus container name")
+	rootCmd.PersistentFlags().Bool("debug", false, "run promdump in debug mode")
 	rootCmd.PersistentFlags().BoolP("force", "f", false, "force the re-download of the promdump binary, which is saved to the local $TMP folder")
 	rootCmd.Flags().String("start-time", defaultStartTime.Format(timeFormat), "start time (UTC) of the samples (yyyy-mm-dd hh:mm:ss)")
 	rootCmd.Flags().String("end-time", defaultEndTime.Format(timeFormat), "end time (UTC) of the samples (yyyy-mm-dd hh:mm:ss")
@@ -286,6 +292,10 @@ func dumpSamples(config *config.Config, clientset *k8s.Clientset) error {
 	minTimestamp := strconv.FormatInt(minTime.UnixNano(), 10)
 
 	execCmd := []string{fmt.Sprintf("%s/promdump", dataDir), "-min-time", minTimestamp, "-max-time", maxTimestamp}
+	if config.GetBool("debug") {
+		execCmd = append(execCmd, "-debug")
+	}
+
 	return clientset.ExecPod(execCmd, os.Stdin, os.Stdout, os.Stderr, false)
 }
 
@@ -293,4 +303,13 @@ func clean(config *config.Config, clientset *k8s.Clientset) error {
 	dataDir := config.GetString("prometheus.dataDir")
 	execCmd := []string{"rm", "-f", fmt.Sprintf("%s/promdump", dataDir)}
 	return clientset.ExecPod(execCmd, os.Stdin, os.Stdout, os.Stderr, false)
+}
+
+func initLogger() {
+	r := ioutil.Discard
+	if appConfig.GetBool("debug") {
+		r = os.Stderr
+	}
+
+	logger = log.New(r)
 }

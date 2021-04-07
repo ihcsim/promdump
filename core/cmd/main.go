@@ -23,7 +23,7 @@ const (
 )
 
 var (
-	logger    = log.New(os.Stderr)
+	logger    *log.Logger
 	targetDir = os.TempDir()
 )
 
@@ -35,6 +35,7 @@ func main() {
 		dataDir  = flag.String("data-dir", "/prometheus", "path to the Prometheus data directory")
 		minTime  = flag.Int64("min-time", defaultMinTime.UnixNano(), "lower bound of the timestamp range (in nanoseconds)")
 		maxTime  = flag.Int64("max-time", defaultMaxTime.UnixNano(), "upper bound of the timestamp range (in nanoseconds)")
+		debug    = flag.Bool("debug", false, "run promdump in debug mode")
 		showMeta = flag.Bool("meta", false, "retrieve the Promtheus TSDB metadata")
 		help     = flag.Bool("help", false, "show usage")
 	)
@@ -44,6 +45,12 @@ func main() {
 		flag.Usage()
 		return
 	}
+
+	output := ioutil.Discard
+	if *debug {
+		output = os.Stderr
+	}
+	logger = log.New(output)
 
 	if err := validateTimestamp(*minTime, *maxTime); err != nil {
 		exit(err)
