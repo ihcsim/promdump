@@ -12,7 +12,7 @@ import (
 func initMetaCmd(rootCmd *cobra.Command) *cobra.Command {
 	metaCmd := &cobra.Command{
 		Use:           "meta",
-		Short:         "Show the metadata of the TSDB.",
+		Short:         "Shows the metadata of a Prometheus TSDB.",
 		Example:       `promdump meta -p prometheus-5c465dfc89-w72xp -n prometheus`,
 		SilenceErrors: true, // let main() handles errors
 		SilenceUsage:  true,

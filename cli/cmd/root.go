@@ -31,16 +31,41 @@ var (
 	k8sConfigFlags *k8scliopts.ConfigFlags
 
 	// Version is the version of the CLI, set during build time
-	Version = "v0.1.0"
+	Version = "dev"
 )
 
 func initRootCmd() (*cobra.Command, error) {
 	rootCmd := &cobra.Command{
 		Use:   "promdump",
-		Short: "A tool to dump Prometheus TSDB samples within the specified time range",
+		Short: "Dumps Prometheus TSDB samples that falls within a time range for transfer to another Prometheus instance",
 		Example: `promdump -p prometheus-5c465dfc89-w72xp -n prometheus --start-time "2021-01-01 00:00:00" --end-time "2021-04-02 16:59:00" > dump.tar.gz
 `,
-		Long:          ``,
+		Long: `promdump dumps Prometheus TSDB samples that falls within a time range,
+for transfer to another Prometheus instance.
+
+It is different from 'promtool tsdb dump' as its output can be copied over to
+another Prometheus instance[1]. And unlike the Promethues TSDB snapshot API,
+promdump doesn't require Prometheus to be started with the --web.enable-admin-api
+option. promdump offers the flexibility to capture data that falls within a
+specific time range.
+
+When run, the promdump CLI downloads the promdump tar.gz file from a public
+Cloud Storage bucket to your local /tmp folder. The download will be skipped if
+such a file already exists. The -f option can be used to force a re-download.
+
+Then the CLI untar the archive file and upload the promdump binary to your
+in-cluster Prometheus container, via the pod's exec subresource.
+
+promdump queries the Prometheus tsdb using the tsdb package[2]. Data blocks
+that fall within the specified time range are gathered and streamed to Stdout,
+which can be redirected to a .tar.gz file on your local file system.
+
+The 'restore' subcommand can be used to copy this .tar.gz file to another
+Prometheus instance.
+
+[1] https://github.com/prometheus/prometheus/issues/8281
+[2] https://pkg.go.dev/github.com/prometheus/prometheus/tsdb
+		`,
 		Version:       Version,
 		SilenceErrors: true, // let main() handles errors
 		SilenceUsage:  true,
