@@ -15,7 +15,7 @@ import (
 
 func TestBlocks(t *testing.T) {
 	logger := log.New(ioutil.Discard)
-	tempDir, err := ioutil.TempDir("", "promdump-tdsb-test")
+	tempDir, err := ioutil.TempDir("", "promdump-tsdb-test")
 	if err != nil {
 		t.Fatal("unexpected error: ", err)
 	}
