@@ -49,7 +49,7 @@ func main() {
 
 	output := os.Stderr
 	if *debug {
-		// enable debug log level here
+		output = os.Stderr
 	}
 	logger = log.New(output)
 

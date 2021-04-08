@@ -40,7 +40,7 @@ func initFixtures() error {
 	}
 
 	cmd.PersistentPreRunE = func(cmd *cobra.Command, args []string) error {
-		appConfig, err = config.New("config", cmd.Flags(), "testdata")
+		appConfig, err = config.New(cmd.Flags())
 		if err != nil {
 			return fmt.Errorf("failed to init viper config: %w", err)
 		}
@@ -101,23 +101,6 @@ func testArgs(f *pflag.Flag, t *testing.T) []string {
 }
 
 func assertConfig(cmd *cobra.Command, appConfig *config.Config, t *testing.T) {
-	// verify YAML config
-	if actual := appConfig.GetString("key1"); actual != "value1" {
-		t.Errorf("mismatch config. expected: value1, actual: %s", actual)
-	}
-
-	if actual := appConfig.GetString("key2"); actual != "value2" {
-		t.Errorf("mismatch config. expected: value2, actual: %s", actual)
-	}
-
-	if actual := appConfig.GetString("object.key1"); actual != "objValue1" {
-		t.Errorf("mismatch config. expected: objValue1, actual: %s", actual)
-	}
-
-	if actual := appConfig.GetString("object.key2"); actual != "objValue2" {
-		t.Errorf("mismatch config. expected: objValue2, actual: %s", actual)
-	}
-
 	// verify flags config
 	cmd.Flags().VisitAll(func(f *pflag.Flag) {
 		if skipFlag(f) {

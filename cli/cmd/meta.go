@@ -34,7 +34,7 @@ func initMetaCmd(rootCmd *cobra.Command) *cobra.Command {
 }
 
 func runMeta(cmd *cobra.Command, config *config.Config, clientset *k8s.Clientset) error {
-	bin, err := downloadBinary(cmd, config)
+	bin, err := downloadBinary(cmd)
 	if err != nil {
 		return err
 	}

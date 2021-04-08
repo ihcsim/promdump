@@ -46,7 +46,6 @@ core:
 cli:
 	CGO_ENABLED=0 GOOS="$(BUILD_OS)" GOARCH="$(BUILD_ARCH)" go build -ldflags="-X 'main.Version=$(VERSION)'" -o "$(TARGET_BIN_DIR)/cli-$(BUILD_OS)-$(BUILD_ARCH)-$(VERSION)" ./cli/cmd ;\
 	shasum -a256 "$(TARGET_BIN_DIR)/cli-$(BUILD_OS)-$(BUILD_ARCH)-$(VERSION)"  | awk '{print $$1}' > "$(TARGET_BIN_DIR)/cli-$(BUILD_OS)-$(BUILD_ARCH)-$(VERSION).sha256"
-	cp ./cli/cmd/promdump.yaml "$(TARGET_BIN_DIR)/"
 
 .PHONY: dist
 dist:
@@ -85,7 +84,6 @@ release: test
 	done ;\
 	$(MAKE) TARGET_BIN_DIR=$(TARGET_RELEASES_DIR) core ;\
 	$(MAKE) TARGET_BIN_DIR=$(TARGET_RELEASES_DIR) dist ;\
-	cp ./cli/cmd/promdump.yaml "$(TARGET_RELEASES_DIR)/"
 
 .PHONY: test
 test/prometheus-repos:
@@ -102,4 +100,3 @@ HACK_DATA_DIR ?= /data
 hack/deploy:
 	pod="$$(kubectl get pods --namespace $(HACK_NAMESPACE) -l "app=prometheus,component=server" -o jsonpath="{.items[0].metadata.name}")" ;\
 	kubectl -n "$(HACK_NAMESPACE)" cp -c prometheus-server "$(TARGET_BIN_DIR)/promdump" "$${pod}:$(HACK_DATA_DIR)" ;\
-	kubectl -n "$(HACK_NAMESPACE)" cp -c prometheus-server "$(TARGET_BIN_DIR)/promdump.yaml" "$${pod}:$(HACK_DATA_DIR)"

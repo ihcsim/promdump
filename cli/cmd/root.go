@@ -20,13 +20,20 @@ import (
 	"k8s.io/client-go/tools/clientcmd"
 )
 
-const timeFormat = "2006-01-02 15:04:05"
+const (
+	timeFormat = "2006-01-02 15:04:05"
+
+	downloadRemoteHost = "https://storage.googleapis.com/promdump"
+)
 
 var (
 	defaultEndTime        = time.Now()
 	defaultStartTime      = defaultEndTime.Add(-1 * time.Hour)
 	defaultNamespace      = "default"
 	defaultRequestTimeout = "10s"
+
+	downloadRequestTimeout = time.Second * 10
+	downloadLocalDir       = os.TempDir()
 
 	appConfig      *config.Config
 	clientset      *k8s.Clientset
@@ -90,7 +97,7 @@ Prometheus instance.
 		},
 		PersistentPreRunE: func(cmd *cobra.Command, args []string) error {
 			var err error
-			appConfig, err = config.New("promdump", cmd.Flags())
+			appConfig, err = config.New(cmd.Flags())
 			if err != nil {
 				return fmt.Errorf("failed to init viper config: %w", err)
 			}
@@ -235,7 +242,7 @@ func k8sConfig(k8sConfigFlags *k8scliopts.ConfigFlags, fs *pflag.FlagSet) (*rest
 }
 
 func run(cmd *cobra.Command, config *config.Config, clientset *k8s.Clientset) error {
-	bin, err := downloadBinary(cmd, config)
+	bin, err := downloadBinary(cmd)
 	if err != nil {
 		return err
 	}
@@ -250,26 +257,18 @@ func run(cmd *cobra.Command, config *config.Config, clientset *k8s.Clientset) er
 	return dumpSamples(config, clientset)
 }
 
-func downloadBinary(cmd *cobra.Command, config *config.Config) (io.Reader, error) {
+func downloadBinary(cmd *cobra.Command) (io.Reader, error) {
 	var (
-		remoteHost   = config.GetString("download.remoteHost")
-		remoteURI    = fmt.Sprintf("%s/promdump-%s.tar.gz", remoteHost, Version)
-		remoteURISHA = fmt.Sprintf("%s/promdump-%s.sha256", remoteHost, Version)
-
-		localDir = config.GetString("download.localDir")
-		timeout  = config.GetDuration("download.timeout")
+		remoteURI    = fmt.Sprintf("%s/promdump-%s.tar.gz", downloadRemoteHost, Version)
+		remoteURISHA = fmt.Sprintf("%s/promdump-%s.sha256", downloadRemoteHost, Version)
 	)
-
-	if localDir == "" {
-		localDir = os.TempDir()
-	}
 
 	force, err := cmd.Flags().GetBool("force")
 	if err != nil {
 		return nil, err
 	}
 
-	download := download.New(localDir, timeout, logger)
+	download := download.New(downloadLocalDir, downloadRequestTimeout, logger)
 	return download.Get(force, remoteURI, remoteURISHA)
 }
 
@@ -312,7 +311,7 @@ func clean(config *config.Config, clientset *k8s.Clientset) error {
 func initLogger() {
 	r := os.Stderr
 	if appConfig.GetBool("debug") {
-		// enable debug log level here
+		r = os.Stderr
 	}
 
 	logger = log.New(r)
