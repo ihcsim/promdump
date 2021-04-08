@@ -52,8 +52,7 @@ func initRootCmd() (*cobra.Command, error) {
 		Short: "Dumps Prometheus metric samples that falls within a provided time range, for transfer to another Prometheus instance",
 		Example: `promdump -p prometheus-5c465dfc89-w72xp -n prometheus --start-time "2021-01-01 00:00:00" --end-time "2021-04-02 16:59:00" > dump.tar.gz
 `,
-		Long: `promdump dumps Prometheus metric samples that falls within a provided time
-range, for transfer to another Prometheus instance.
+		Long: `promdump dumps Prometheus metric samples that falls within a provided time range.
 
 It is different from 'promtool tsdb dump' as its output can be copied over to
 another Prometheus instance[1]. And unlike the Promethues TSDB snapshot API,

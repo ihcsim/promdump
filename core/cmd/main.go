@@ -12,6 +12,7 @@ import (
 	"path/filepath"
 	"time"
 
+	"github.com/go-kit/kit/log/level"
 	"github.com/ihcsim/promdump/pkg/log"
 	"github.com/ihcsim/promdump/pkg/tsdb"
 	promtsdb "github.com/prometheus/prometheus/tsdb"
@@ -83,7 +84,7 @@ func main() {
 		exit(err)
 	}
 
-	_ = logger.Log("message", "operation completed", "numBytesRead", nbr)
+	_ = level.Info(logger.Logger).Log("message", "operation completed", "numBytesRead", nbr)
 }
 
 func writeMeta(meta *tsdb.Meta) (int64, error) {
@@ -116,7 +117,7 @@ func writeBlocks(dataDir string, blocks []*promtsdb.Block, w io.Writer) (int64, 
 	go func() {
 		defer pipeWriter.Close()
 		if err := compressed(dataDir, blocks, pipeWriter); err != nil {
-			_ = logger.Log("message", "error closing pipeWriter", "reason", err)
+			_ = level.Error(logger.Logger).Log("message", "error closing pipeWriter", "reason", err)
 		}
 	}()
 
@@ -174,7 +175,7 @@ func compressed(dataDir string, blocks []*promtsdb.Block, writer *io.PipeWriter)
 
 			return nil
 		}); err != nil {
-			_ = logger.Log("errors", err)
+			_ = level.Error(logger.Logger).Log("errors", err)
 		}
 	}
 
@@ -220,10 +221,10 @@ func validateTimestamp(minTime, maxTime int64) error {
 
 func handleNoDataBlocks() (int64, error) {
 	buf := bytes.NewBuffer([]byte(resultNoDataBlocks + "\n"))
-	return io.Copy(os.Stdout, buf)
+	return io.Copy(os.Stderr, buf)
 }
 
 func exit(err error) {
-	_ = logger.Log("error", err)
+	_ = level.Error(logger.Logger).Log("error", err)
 	os.Exit(1)
 }
