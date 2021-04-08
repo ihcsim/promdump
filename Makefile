@@ -1,6 +1,4 @@
 SHELL ?= /bin/bash
-NAMESPACE ?= prometheus
-REMOTE_DIR ?= /prometheus
 
 BUILD_OS ?= linux
 BUILD_ARCH ?= amd64
@@ -57,6 +55,7 @@ dist:
 	tar -C "$(TARGET_BIN_DIR)" -czvf "$(TARGET_DIST_DIR)/promdump-$(VERSION).tar.gz" promdump
 	shasum -a256 "$(TARGET_DIST_DIR)/promdump-$(VERSION).tar.gz"  | awk '{print $$1}' > "$(TARGET_DIST_DIR)/promdump-$(VERSION).tar.gz.sha256"
 	gsutil cp "$(TARGET_DIST_DIR)/promdump-$(VERSION).tar.gz" "$(TARGET_DIST_DIR)/promdump-$(VERSION).tar.gz.sha256" gs://promdump
+	sleep 5
 	gsutil acl ch -u AllUsers:R gs://promdump/promdump-$(VERSION).tar.gz gs://promdump/promdump-$(VERSION).tar.gz.sha256
 
 .PHONY: plugins
@@ -97,14 +96,10 @@ test/prometheus-repos:
 test/prometheus:
 	helm install prometheus prometheus-community/prometheus
 
+HACK_NAMESPACE ?= default
+HACK_DATA_DIR ?= /data
 .PHONY: hack
 hack/deploy:
-	target_pod="$$(kubectl -n "$(NAMESPACE)" get po -oname | awk -F'/' '{print $$2}')" ;\
-	kubectl -n "$(NAMESPACE)" cp "$(TARGET_BIN_DIR)/promdump" "$${target_pod}:$(REMOTE_DIR)"
-
-hack/dump:
-	rm -rf $(TARGET_DIR)
-	mkdir -p $(TARGET_DIR)
-	target_pod="$$(kubectl -n "$(NAMESPACE)" get po -oname | awk -F'/' '{print $$2}')" ;\
-	dump_file="$$(kubectl -n "$(NAMESPACE)" exec $${target_pod} -- "$(REMOTE_DIR)/promdump")" ;\
-	kubectl -n "$(NAMESPACE)" cp "$${target_pod}:$${dump_file}" "target/blocks.tar.gz"
+	pod="$$(kubectl get pods --namespace $(HACK_NAMESPACE) -l "app=prometheus,component=server" -o jsonpath="{.items[0].metadata.name}")" ;\
+	kubectl -n "$(HACK_NAMESPACE)" cp -c prometheus-server "$(TARGET_BIN_DIR)/promdump" "$${pod}:$(HACK_DATA_DIR)" ;\
+	kubectl -n "$(HACK_NAMESPACE)" cp -c prometheus-server "$(TARGET_BIN_DIR)/promdump.yaml" "$${pod}:$(HACK_DATA_DIR)"
