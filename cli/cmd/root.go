@@ -6,6 +6,7 @@ import (
 	"io/ioutil"
 	"os"
 	"strconv"
+	"strings"
 	"time"
 
 	"github.com/ihcsim/promdump/pkg/log"
@@ -21,9 +22,8 @@ import (
 )
 
 const (
-	timeFormat = "2006-01-02 15:04:05"
-
 	downloadRemoteHost = "https://storage.googleapis.com/promdump"
+	timeFormat         = "2006-01-02 15:04:05"
 )
 
 var (
@@ -48,17 +48,19 @@ var (
 
 func initRootCmd() (*cobra.Command, error) {
 	rootCmd := &cobra.Command{
-		Use:   "promdump",
-		Short: "Dumps Prometheus metric samples that falls within a provided time range, for transfer to another Prometheus instance",
-		Example: `promdump -p prometheus-5c465dfc89-w72xp -n prometheus --start-time "2021-01-01 00:00:00" --end-time "2021-04-02 16:59:00" > dump.tar.gz
-`,
-		Long: `promdump dumps Prometheus metric samples that falls within a provided time range.
+		Use:   `promdump -p POD --start-time "yyyy-mm-dd hh:mm:ss" --end-time "yyyy-mm-dd hh:mm:ss" [-n NAMESPACE] [-c CONTAINER] [-d DATA_DIR]`,
+		Short: "Creates a data dump containing Prometheus metric samples within a time range",
+		Example: `# creates a data dump containing metric samples between
+# 2021-01-01 00:00:00 and 2021-04-02 16:59:00, from the Prometheus <pod> in the
+# <ns> namespace.
+kubectl promdump -p <pod> -n <ns> --start-time "2021-01-01 00:00:00" --end-time "2021-04-02 16:59:00" > dump.tar.gz`,
+		Long: `promdump creates a data dump containing Prometheus metric samples within a time range.
 
-It is different from 'promtool tsdb dump' as its output can be copied over to
-another Prometheus instance[1]. And unlike the Promethues TSDB snapshot API,
-promdump doesn't require Prometheus to be started with the --web.enable-admin-api
-option. Instead of dumping the entire TSDB, promdump offers the flexibility to
-capture data that falls within a specific time range.
+It is different from 'promtool tsdb dump' in such a way that its output can be
+reused in another Prometheus instance. And unlike the Promethues TSDB snapshot
+API, promdump doesn't require Prometheus to be started with the
+--web.enable-admin-api option. Instead of dumping the entire TSDB, promdump
+offers the flexibility to capture data that falls within a specific time range.
 
 When run, the promdump CLI downloads the promdump tar.gz file from a public
 Cloud Storage bucket to your local /tmp folder. The download will be skipped if
@@ -67,15 +69,16 @@ such a file already exists. The -f option can be used to force a re-download.
 Then the CLI untar the archive file and upload the promdump binary to your
 in-cluster Prometheus container, via the pod's exec subresource.
 
-promdump queries the Prometheus tsdb using the tsdb package[2]. Data blocks
-that fall within the specified time range are gathered and streamed to Stdout,
-which can be redirected to a .tar.gz file on your local file system.
+To create the data dump, promdump queries the Prometheus tsdb using the tsdb
+package[1]. Data blocks that fall within the specified time range are gathered
+and streamed to stdout, which can be redirected to a .tar.gz file on your local
+file system. The promdump binary will be automatically removed from your
+Prometheus container once the data dump is captured.
 
 The 'restore' subcommand can be used to copy this .tar.gz file to another
 Prometheus instance.
 
-[1] https://github.com/prometheus/prometheus/issues/8281
-[2] https://pkg.go.dev/github.com/prometheus/prometheus/tsdb
+[1] https://pkg.go.dev/github.com/prometheus/prometheus/tsdb
 		`,
 		Version:       Version,
 		SilenceErrors: true, // let main() handles errors
@@ -133,6 +136,8 @@ Prometheus instance.
 	if err := rootCmd.MarkPersistentFlagRequired("pod"); err != nil {
 		return nil, err
 	}
+
+	setPluginUsageTemplate(rootCmd)
 
 	return rootCmd, nil
 }
@@ -315,4 +320,11 @@ func initLogger() {
 	}
 
 	logger = log.New(logLevel, os.Stderr)
+}
+
+func setPluginUsageTemplate(cmd *cobra.Command) {
+	defaultTmpl := cmd.UsageTemplate()
+	newTmpl := strings.ReplaceAll(defaultTmpl, "{{.CommandPath}}", "kubectl {{.CommandPath}}")
+	newTmpl = strings.ReplaceAll(newTmpl, "{{.UseLine}}", "kubectl {{.UseLine}}")
+	cmd.SetUsageTemplate(newTmpl)
 }

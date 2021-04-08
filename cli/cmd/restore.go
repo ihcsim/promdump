@@ -13,10 +13,11 @@ import (
 
 func initRestoreCmd(rootCmd *cobra.Command) (*cobra.Command, error) {
 	restoreCmd := &cobra.Command{
-		Use:   "restore",
+		Use:   "restore -p POD [-n NAMESPACE] [-c CONTAINER] [-d DATA_DIR]",
 		Short: "Restores samples dump to a Prometheus instance.",
-		Example: `promdump restore -p prometheus-5c465dfc89-w72xp -n prometheus -d dump.tar.gz
-`,
+		Example: `# copy and restore the data dump in the dump.tar.gz file to the Prometheus
+# <pod> in namespace <ns>.
+kubectl promdump restore -p <pod> -n <ns> -t dump.tar.gz`,
 		SilenceErrors: true, // let main() handles errors
 		SilenceUsage:  true,
 		RunE: func(cmd *cobra.Command, args []string) error {

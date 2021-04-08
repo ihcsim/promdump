@@ -11,9 +11,11 @@ import (
 
 func initMetaCmd(rootCmd *cobra.Command) *cobra.Command {
 	metaCmd := &cobra.Command{
-		Use:           "meta",
-		Short:         "Shows the metadata of a Prometheus TSDB.",
-		Example:       `promdump meta -p prometheus-5c465dfc89-w72xp -n prometheus`,
+		Use:   "meta -p POD [-n NAMESPACE] [-c CONTAINER] [-d DATA_DIR]",
+		Short: "Shows the metadata of the Prometheus TSDB.",
+		Example: `# show the metadata of all the data blocks in the Prometheus pod <pod> in
+# namespace <ns>
+kubectl promdump meta -p <pod> -n <ns>`,
 		SilenceErrors: true, // let main() handles errors
 		SilenceUsage:  true,
 		RunE: func(cmd *cobra.Command, args []string) error {
