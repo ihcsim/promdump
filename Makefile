@@ -11,7 +11,8 @@ BASE_DIR = $(shell pwd)
 TARGET_DIR = $(BASE_DIR)/target
 TARGET_BIN_DIR = $(TARGET_DIR)/bin
 TARGET_DIST_DIR = $(TARGET_DIR)/dist
-TARGET_RELEASE_DIR = $(TARGET_DIR)/$(VERSION)
+TARGET_RELEASES_DIR = $(TARGET_DIR)/releases/$(VERSION)
+TARGET_PLUGINS_DIR = $(TARGET_RELEASES_DIR)/plugins
 
 all: test lint build dist
 
@@ -58,20 +59,34 @@ dist:
 	gsutil cp "$(TARGET_DIST_DIR)/promdump-$(VERSION).tar.gz" "$(TARGET_DIST_DIR)/promdump-$(VERSION).tar.gz.sha256" gs://promdump
 	gsutil acl ch -u AllUsers:R gs://promdump/promdump-$(VERSION).tar.gz gs://promdump/promdump-$(VERSION).tar.gz.sha256
 
-.PHONY: release
-release: test
-	rm -rf "$(TARGET_RELEASE_DIR)" ;\
-	mkdir -p "$(TARGET_RELEASE_DIR)" ;\
+.PHONY: plugins
+plugins:
+	rm -rf "$(TARGET_PLUGINS_DIR)" ;\
+	mkdir -p "$(TARGET_PLUGINS_DIR)" ;\
 	arch=( amd64 386 );\
 	goos=( linux darwin windows ) ;\
 	for arch in "$${arch[@]}" ; do \
 		for os in "$${goos[@]}" ; do \
-			$(MAKE) BUILD_OS="$${os}" BUILD_ARCH="$${arch}" TARGET_BIN_DIR=$(TARGET_RELEASE_DIR) cli ;\
+			cp "$(TARGET_RELEASES_DIR)/cli-$${os}-$${arch}-$(VERSION)" "$(TARGET_PLUGINS_DIR)/kubectl-promdump" ;\
+			tar -C "$(TARGET_PLUGINS_DIR)" -czvf "$(TARGET_PLUGINS_DIR)/kubectl-promdump-$${os}-$${arch}-$(VERSION).tar.gz" kubectl-promdump ;\
+			rm "$(TARGET_PLUGINS_DIR)/kubectl-promdump"
 		done ;\
 	done ;\
-	$(MAKE) TARGET_BIN_DIR=$(TARGET_RELEASE_DIR) core ;\
-	$(MAKE) TARGET_BIN_DIR=$(TARGET_RELEASE_DIR) publish ;\
-	cp ./cli/cmd/promdump.yaml "$(TARGET_RELEASE_DIR)/"
+
+.PHONY: release
+release: test
+	rm -rf "$(TARGET_RELEASES_DIR)" ;\
+	mkdir -p "$(TARGET_RELEASES_DIR)" ;\
+	arch=( amd64 386 );\
+	goos=( linux darwin windows ) ;\
+	for arch in "$${arch[@]}" ; do \
+		for os in "$${goos[@]}" ; do \
+			$(MAKE) BUILD_OS="$${os}" BUILD_ARCH="$${arch}" TARGET_BIN_DIR=$(TARGET_RELEASES_DIR) cli ;\
+		done ;\
+	done ;\
+	$(MAKE) TARGET_BIN_DIR=$(TARGET_RELEASES_DIR) core ;\
+	$(MAKE) TARGET_BIN_DIR=$(TARGET_RELEASES_DIR) dist ;\
+	cp ./cli/cmd/promdump.yaml "$(TARGET_RELEASES_DIR)/"
 
 .PHONY: test
 test/prometheus-repos:

@@ -49,6 +49,8 @@ promdump only performs read operations on the TSDB.
 The `restore` subcommand can then be used to copy this compressed file to
 another Prometheus instance.
 
+The `--debug` option can be used to output more verbose logs for each command.
+
 ## Getting Started
 
 Install promdump as a `kubectl` plugin:
