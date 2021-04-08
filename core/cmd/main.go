@@ -23,8 +23,9 @@ const (
 )
 
 var (
-	logger    *log.Logger
-	targetDir = os.TempDir()
+	logger             *log.Logger
+	resultNoDataBlocks = "no data blocks found"
+	targetDir          = os.TempDir()
 )
 
 func main() {
@@ -32,7 +33,7 @@ func main() {
 		defaultMaxTime = time.Now()
 		defaultMinTime = defaultMaxTime.Add(-2 * time.Hour)
 
-		dataDir  = flag.String("data-dir", "/prometheus", "path to the Prometheus data directory")
+		dataDir  = flag.String("data-dir", "/data", "path to the Prometheus data directory")
 		minTime  = flag.Int64("min-time", defaultMinTime.UnixNano(), "lower bound of the timestamp range (in nanoseconds)")
 		maxTime  = flag.Int64("max-time", defaultMaxTime.UnixNano(), "upper bound of the timestamp range (in nanoseconds)")
 		debug    = flag.Bool("debug", false, "run promdump in debug mode")
@@ -46,9 +47,9 @@ func main() {
 		return
 	}
 
-	output := ioutil.Discard
+	output := os.Stderr
 	if *debug {
-		output = os.Stderr
+		// enable debug log level here
 	}
 	logger = log.New(output)
 
@@ -84,6 +85,10 @@ func main() {
 }
 
 func writeMeta(meta *tsdb.Meta) (int64, error) {
+	if meta.Start.IsZero() && meta.End.IsZero() {
+		return handleNoDataBlocks()
+	}
+
 	output := fmt.Sprintf(`Earliest time:          | %s
 Latest time:            | %s
 Total number of blocks  | %d
@@ -99,6 +104,10 @@ Total size              | %d
 }
 
 func writeBlocks(dataDir string, blocks []*promtsdb.Block, w io.Writer) (int64, error) {
+	if len(blocks) == 0 {
+		return handleNoDataBlocks()
+	}
+
 	pipeReader, pipeWriter := io.Pipe()
 	defer pipeReader.Close()
 
@@ -205,6 +214,11 @@ func validateTimestamp(minTime, maxTime int64) error {
 	}
 
 	return nil
+}
+
+func handleNoDataBlocks() (int64, error) {
+	buf := bytes.NewBuffer([]byte(resultNoDataBlocks + "\n"))
+	return io.Copy(os.Stdout, buf)
 }
 
 func exit(err error) {

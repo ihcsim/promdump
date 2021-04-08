@@ -35,7 +35,7 @@ var (
 	logger *log.Logger
 
 	// Version is the version of the CLI, set during build time
-	Version = "dev"
+	Version = "v0.1.0"
 )
 
 func initRootCmd() (*cobra.Command, error) {
@@ -292,7 +292,10 @@ func dumpSamples(config *config.Config, clientset *k8s.Clientset) error {
 	maxTimestamp := strconv.FormatInt(maxTime.UnixNano(), 10)
 	minTimestamp := strconv.FormatInt(minTime.UnixNano(), 10)
 
-	execCmd := []string{fmt.Sprintf("%s/promdump", dataDir), "-min-time", minTimestamp, "-max-time", maxTimestamp}
+	execCmd := []string{fmt.Sprintf("%s/promdump", dataDir),
+		"-min-time", minTimestamp,
+		"-max-time", maxTimestamp,
+		"-data-dir", dataDir}
 	if config.GetBool("debug") {
 		execCmd = append(execCmd, "-debug")
 	}
@@ -307,9 +310,9 @@ func clean(config *config.Config, clientset *k8s.Clientset) error {
 }
 
 func initLogger() {
-	r := ioutil.Discard
+	r := os.Stderr
 	if appConfig.GetBool("debug") {
-		r = os.Stderr
+		// enable debug log level here
 	}
 
 	logger = log.New(r)

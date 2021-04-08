@@ -51,7 +51,8 @@ func runMeta(cmd *cobra.Command, config *config.Config, clientset *k8s.Clientset
 
 func printMeta(config *config.Config, clientset *k8s.Clientset) error {
 	dataDir := config.GetString("data-dir")
-	execCmd := []string{fmt.Sprintf("%s/promdump", dataDir), "-meta"}
+	execCmd := []string{fmt.Sprintf("%s/promdump", dataDir), "-meta",
+		"-data-dir", dataDir}
 	if config.GetBool("debug") {
 		execCmd = append(execCmd, "-debug")
 	}
