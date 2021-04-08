@@ -57,6 +57,19 @@ dist:
 	sleep 5
 	gsutil acl ch -u AllUsers:R gs://promdump/promdump-$(VERSION).tar.gz gs://promdump/promdump-$(VERSION).tar.gz.sha256
 
+.PHONY: release
+release:
+	rm -rf "$(TARGET_RELEASES_DIR)" ;\
+	mkdir -p "$(TARGET_RELEASES_DIR)" ;\
+	arch=( amd64 386 );\
+	goos=( linux darwin windows ) ;\
+	for arch in "$${arch[@]}" ; do \
+		for os in "$${goos[@]}" ; do \
+			$(MAKE) BUILD_OS="$${os}" BUILD_ARCH="$${arch}" TARGET_BIN_DIR=$(TARGET_RELEASES_DIR) cli ;\
+		done ;\
+	done ;\
+	$(MAKE) TARGET_BIN_DIR=$(TARGET_RELEASES_DIR) core dist;\
+
 .PHONY: plugins
 plugins:
 	rm -rf "$(TARGET_PLUGINS_DIR)" ;\
@@ -67,23 +80,10 @@ plugins:
 		for os in "$${goos[@]}" ; do \
 			cp "$(TARGET_RELEASES_DIR)/cli-$${os}-$${arch}-$(VERSION)" "$(TARGET_PLUGINS_DIR)/kubectl-promdump" ;\
 			tar -C "$(TARGET_PLUGINS_DIR)" -czvf "$(TARGET_PLUGINS_DIR)/kubectl-promdump-$${os}-$${arch}-$(VERSION).tar.gz" kubectl-promdump ;\
-			rm "$(TARGET_PLUGINS_DIR)/kubectl-promdump"
+			rm "$(TARGET_PLUGINS_DIR)/kubectl-promdump" ;\
+			shasum -a256 $(TARGET_PLUGINS_DIR)/kubectl-promdump-$${os}-$${arch}-$(VERSION).tar.gz | awk '{print $$1}' > $(TARGET_PLUGINS_DIR)/kubectl-promdump-$${os}-$${arch}-$(VERSION).tar.gz.sha256 ;\
 		done ;\
 	done ;\
-
-.PHONY: release
-release: test
-	rm -rf "$(TARGET_RELEASES_DIR)" ;\
-	mkdir -p "$(TARGET_RELEASES_DIR)" ;\
-	arch=( amd64 386 );\
-	goos=( linux darwin windows ) ;\
-	for arch in "$${arch[@]}" ; do \
-		for os in "$${goos[@]}" ; do \
-			$(MAKE) BUILD_OS="$${os}" BUILD_ARCH="$${arch}" TARGET_BIN_DIR=$(TARGET_RELEASES_DIR) cli ;\
-		done ;\
-	done ;\
-	$(MAKE) TARGET_BIN_DIR=$(TARGET_RELEASES_DIR) core ;\
-	$(MAKE) TARGET_BIN_DIR=$(TARGET_RELEASES_DIR) dist ;\
 
 .PHONY: test
 test/prometheus-repos:
