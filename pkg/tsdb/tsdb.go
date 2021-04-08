@@ -4,6 +4,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/go-kit/kit/log/level"
 	"github.com/ihcsim/promdump/pkg/log"
 	"github.com/prometheus/prometheus/tsdb"
 )
@@ -38,7 +39,7 @@ func (t *Tsdb) Blocks(minTimeNano, maxTimeNano int64) ([]*tsdb.Block, error) {
 		startTime = time.Unix(0, minTimeNano).UTC()
 		endTime   = time.Unix(0, maxTimeNano).UTC()
 	)
-	_ = t.logger.Log("message", "accessing tsdb",
+	_ = level.Debug(t.logger).Log("message", "accessing tsdb",
 		"datadir", t.dataDir,
 		"startTime", startTime,
 		"endTime", endTime)
@@ -55,7 +56,7 @@ func (t *Tsdb) Blocks(minTimeNano, maxTimeNano int64) ([]*tsdb.Block, error) {
 
 	var results []*tsdb.Block
 	defer func() {
-		_ = t.logger.Log("message", "closing connection to tsdb", "numBlocksFound", len(results))
+		_ = level.Debug(t.logger).Log("message", "closing connection to tsdb", "numBlocksFound", len(results))
 		_ = db.Close()
 	}()
 
@@ -76,7 +77,7 @@ func (t *Tsdb) Blocks(minTimeNano, maxTimeNano int64) ([]*tsdb.Block, error) {
 			blockDir = truncDir[:strings.Index(truncDir, "/")]
 		}
 
-		_ = t.logger.Log("message", "checking block",
+		_ = level.Debug(t.logger).Log("message", "checking block",
 			"path", blockDir,
 			"blockStartTime (utc)", blockStartTime,
 			"blockEndTime (utc)", blockEndTime,
@@ -89,11 +90,11 @@ func (t *Tsdb) Blocks(minTimeNano, maxTimeNano int64) ([]*tsdb.Block, error) {
 
 			if blockDir != current {
 				current = blockDir
-				_ = t.logger.Log("message", "adding block", "path", blockDir)
+				_ = level.Debug(t.logger).Log("message", "adding block", "path", blockDir)
 			}
 			results = append(results, b)
 		} else {
-			_ = t.logger.Log("message", "skipping block", "path", blockDir)
+			_ = level.Debug(t.logger).Log("message", "skipping block", "path", blockDir)
 		}
 	}
 
@@ -102,7 +103,7 @@ func (t *Tsdb) Blocks(minTimeNano, maxTimeNano int64) ([]*tsdb.Block, error) {
 
 // Meta returns metadata of the TSDB instance.
 func (t *Tsdb) Meta() (*Meta, error) {
-	_ = t.logger.Log("message", "retrieving tsdb metadata", "datadir", t.dataDir)
+	_ = level.Debug(t.logger).Log("message", "retrieving tsdb metadata", "datadir", t.dataDir)
 	db, err := tsdb.OpenDBReadOnly(t.dataDir, t.logger.Logger)
 	if err != nil {
 		return nil, err
@@ -114,7 +115,7 @@ func (t *Tsdb) Meta() (*Meta, error) {
 	}
 
 	defer func() {
-		_ = t.logger.Log("message", "closing connection to tsdb")
+		_ = level.Debug(t.logger).Log("message", "closing connection to tsdb")
 		_ = db.Close()
 	}()
 
@@ -142,7 +143,7 @@ func (t *Tsdb) Meta() (*Meta, error) {
 			blockDir = truncDir[:strings.Index(truncDir, "/")]
 		}
 
-		_ = t.logger.Log("message", "checking block",
+		_ = level.Debug(t.logger).Log("message", "checking block",
 			"path", blockDir,
 			"blockStartTime", blockStartTime,
 			"blockEndTime", blockEndTime,

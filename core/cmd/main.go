@@ -18,6 +18,8 @@ import (
 )
 
 const (
+	defaultLogLevel = "error"
+
 	timeFormatFile = "2006-01-02-150405"
 	timeFormatOut  = "2006-01-02 15:04:05"
 )
@@ -47,11 +49,11 @@ func main() {
 		return
 	}
 
-	output := os.Stderr
+	logLevel := defaultLogLevel
 	if *debug {
-		output = os.Stderr
+		logLevel = "debug"
 	}
-	logger = log.New(output)
+	logger = log.New(logLevel, os.Stderr)
 
 	if err := validateTimestamp(*minTime, *maxTime); err != nil {
 		exit(err)

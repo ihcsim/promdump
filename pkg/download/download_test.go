@@ -18,7 +18,7 @@ func TestDownload(t *testing.T) {
 	var (
 		dirname = "promdump-test"
 		force   = false
-		logger  = log.New(ioutil.Discard)
+		logger  = log.New("debug", ioutil.Discard)
 		timeout = time.Second
 
 		mux          = http.NewServeMux()

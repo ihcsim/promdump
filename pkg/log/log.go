@@ -2,9 +2,11 @@ package log
 
 import (
 	"io"
+	"strings"
 	"time"
 
 	"github.com/go-kit/kit/log"
+	"github.com/go-kit/kit/log/level"
 )
 
 // Logger encapsulates the underlying logging library.
@@ -13,12 +15,32 @@ type Logger struct {
 }
 
 // New returns a new contextual logger. Log lines will be written to out.
-func New(out io.Writer) *Logger {
+func New(logLevel string, out io.Writer) *Logger {
 	logger := log.NewLogfmtLogger(out)
 	logger = log.With(logger,
 		"time", log.TimestampFormat(now, time.RFC3339),
 		"caller", log.DefaultCaller,
 	)
+
+	var opt level.Option
+	switch strings.ToLower(logLevel) {
+	case level.DebugValue().String():
+		opt = level.AllowDebug()
+	case level.ErrorValue().String():
+		opt = level.AllowError()
+	case level.WarnValue().String():
+		opt = level.AllowWarn()
+	case "all":
+		opt = level.AllowAll()
+	case "none":
+		opt = level.AllowNone()
+	case level.InfoValue().String():
+		fallthrough
+	default:
+		opt = level.AllowInfo()
+	}
+	logger = level.NewFilter(logger, opt)
+
 	return &Logger{logger}
 }
 

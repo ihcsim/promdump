@@ -51,7 +51,7 @@ func TestCanExec(t *testing.T) {
 			clientset := Clientset{
 				&config.Config{Viper: viper.New()},
 				&rest.Config{},
-				log.New(ioutil.Discard),
+				log.New("debug", ioutil.Discard),
 				k8sClientset,
 			}
 
@@ -84,7 +84,7 @@ func TestExec(t *testing.T) {
 	clientset := &Clientset{
 		testConfig,
 		&rest.Config{},
-		log.New(ioutil.Discard),
+		log.New("debug", ioutil.Discard),
 		k8sClientset,
 	}
 

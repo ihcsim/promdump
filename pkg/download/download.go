@@ -11,6 +11,7 @@ import (
 	"path/filepath"
 	"time"
 
+	"github.com/go-kit/kit/log/level"
 	"github.com/ihcsim/promdump/pkg/log"
 )
 
@@ -80,7 +81,7 @@ func (d *Download) Get(force bool, remoteURI, remoteURISHA string) (io.ReadClose
 }
 
 func (d *Download) download(remote, savedPath string) error {
-	_ = d.logger.Log("message", "downloading promdump",
+	_ = level.Info(d.logger).Log("message", "downloading promdump",
 		"remoteURI", remote,
 		"timeout", d.http.Timeout,
 		"localDir", savedPath)
@@ -105,12 +106,12 @@ func (d *Download) download(remote, savedPath string) error {
 		return err
 	}
 
-	_ = d.logger.Log("message", "download completed", "numBytesWrite", nbr)
+	_ = level.Info(d.logger).Log("message", "download completed", "numBytesWrite", nbr)
 	return nil
 }
 
 func (d *Download) checksum(file *os.File, remote string) error {
-	_ = d.logger.Log("message", "verifying checksum",
+	_ = level.Info(d.logger).Log("message", "verifying checksum",
 		"endpoint", remote,
 		"timeout", d.http.Timeout,
 	)
@@ -138,6 +139,6 @@ func (d *Download) checksum(file *os.File, remote string) error {
 		return fmt.Errorf("%w: expected:%s, actual:%s", errChecksumMismatch, expected, actual)
 	}
 
-	_ = d.logger.Log("message", "confirmed checksum")
+	_ = level.Info(d.logger).Log("message", "confirmed checksum")
 	return nil
 }

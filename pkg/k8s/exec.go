@@ -7,6 +7,7 @@ import (
 	"net/url"
 	"strings"
 
+	"github.com/go-kit/kit/log/level"
 	authzv1 "k8s.io/api/authorization/v1"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -29,7 +30,7 @@ func (c *Clientset) ExecPod(command []string, stdin io.Reader, stdout, stderr io
 		endTime        = c.config.GetTime("end-time")
 	)
 
-	_ = c.logger.Log("message", "sending exec request",
+	_ = level.Info(c.logger).Log("message", "sending exec request",
 		"command", strings.Join(command, " "),
 		"namespace", ns,
 		"pod", pod,
@@ -90,7 +91,7 @@ func (c *Clientset) CanExec() error {
 		},
 	}
 
-	_ = c.logger.Log("message", "checking for exec permissions",
+	_ = level.Info(c.logger).Log("message", "checking for exec permissions",
 		"namespace", ns,
 		"request-timeout", timeout)
 
@@ -109,7 +110,7 @@ func (c *Clientset) CanExec() error {
 		return deniedCreateExecErr
 	}
 
-	_ = c.logger.Log("message", "confirmed exec permissions",
+	_ = level.Info(c.logger).Log("message", "confirmed exec permissions",
 		"namespace", ns,
 		"request-timeout", timeout)
 	return nil

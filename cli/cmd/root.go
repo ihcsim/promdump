@@ -29,6 +29,7 @@ const (
 var (
 	defaultEndTime        = time.Now()
 	defaultStartTime      = defaultEndTime.Add(-1 * time.Hour)
+	defaultLogLevel       = "error"
 	defaultNamespace      = "default"
 	defaultRequestTimeout = "10s"
 
@@ -48,10 +49,10 @@ var (
 func initRootCmd() (*cobra.Command, error) {
 	rootCmd := &cobra.Command{
 		Use:   "promdump",
-		Short: "Dumps Prometheus samples that falls within a provided time range, for transfer to another Prometheus instance",
+		Short: "Dumps Prometheus metric samples that falls within a provided time range, for transfer to another Prometheus instance",
 		Example: `promdump -p prometheus-5c465dfc89-w72xp -n prometheus --start-time "2021-01-01 00:00:00" --end-time "2021-04-02 16:59:00" > dump.tar.gz
 `,
-		Long: `promdump dumps Prometheus samples that falls within a provided time
+		Long: `promdump dumps Prometheus metric samples that falls within a provided time
 range, for transfer to another Prometheus instance.
 
 It is different from 'promtool tsdb dump' as its output can be copied over to
@@ -309,10 +310,10 @@ func clean(config *config.Config, clientset *k8s.Clientset) error {
 }
 
 func initLogger() {
-	r := os.Stderr
+	logLevel := defaultLogLevel
 	if appConfig.GetBool("debug") {
-		r = os.Stderr
+		logLevel = "debug"
 	}
 
-	logger = log.New(r)
+	logger = log.New(logLevel, os.Stderr)
 }
