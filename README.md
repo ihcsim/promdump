@@ -6,7 +6,7 @@ transfer to another Prometheus instance.
 ## Why This Tool
 
 When debugging users' Kubernetes clusters with restrictive access, I find it
-invaluable to get access to the Prometheus metrics on their clusters. To reduce
+helpful to get access to the Prometheus metrics on their clusters. To reduce
 the amount of back and forth (due to missing metrics, incorrect labels etc.), it
 makes sense to ask the users to _"get me everything around the time of the
 incident"_.
@@ -14,11 +14,11 @@ incident"_.
 The most common way to achieve this is to use commands like `kubectl exec` and
 `kubectl cp` to compress and dump Prometheus' entire data directory. On
 non-trivial clusters, the resulting compressed file can be very large. To
-import the data into a test instance, I will need at least the same amount of
-disk space.
+import the data into a local test instance, I will need at least the same amount
+of disk space.
 
 promdump is a tool that can be used to dump Prometheus samples that fall within
-certain a time range.
+a certain time range.
 
 It is different from the `promtool tsdb dump` command as its output can be
 copied over to another Prometheus instance. See this
@@ -28,7 +28,7 @@ discussion on the limitation on the output of `promtool tsdb dump`.
 And unlike the Promethues TSDB `snapshot` API, promdump doesn't require
 Prometheus to be started with the `--web.enable-admin-api` option. Instead of
 dumping the entire TSDB, promdump offers the flexibility to capture data that
-falls within a particular time range.
+falls within a certain time range.
 
 ## How It Works
 
@@ -43,8 +43,9 @@ Prometheus container, via the pod's `exec` subresource.
 Within the Prometheus container, promdump queries the Prometheus TSDB using the
 [`tsdb`](https://pkg.go.dev/github.com/prometheus/prometheus/tsdb) package. Data
 blocks that fall within the specified time range are gathered and streamed to
-stdout, which can be redirected to a compressed file on your local file system.
-promdump only performs read operations on the TSDB.
+stdout, which can be redirected to a file on your local file system.
+
+⭐ promdump only performs read operations on the TSDB.
 
 The `restore` subcommand can then be used to copy this compressed file to
 another Prometheus instance.
@@ -68,18 +69,19 @@ $ kind create cluster --name dev-00
 $ kind create cluster --name dev-01
 ```
 
-Install Prometheus using the community
+Install Prometheus on both clusters using the community
 [Helm chart](https://github.com/prometheus-community/helm-charts/tree/main/charts/prometheus):
 ```sh
 helm install prometheus prometheus-community/prometheus
 ```
 
-Deploy a custom controller to send some traffic to the API server:
+Deploy a custom controller that generates some custom metrics to the first
+cluster:
 ```sh
-kubectl apply -f https://raw.githubusercontent.com/ihcsim/controllers/master/podlister/deployment.yaml
+kubectl --context=kind-dev-00 apply -f https://raw.githubusercontent.com/ihcsim/controllers/master/podlister/deployment.yaml
 ```
-This controller is instrumented to generate a `demo_http_requests_total` metric,
-which we will use promdump to copy to the second cluster later.
+This controller is instrumented to generate a custom `demo_http_requests_total`
+metric, which we will use promdump to copy to the second cluster later.
 
 Dump the data from the first cluster:
 ```sh
@@ -123,10 +125,16 @@ $ kubectl --context="${CONTEXT}" promdump restore \
 $ kubectl --context="${CONTEXT}" exec "${POD_NAME}" -- ls -al "${DATA_DIR}
 ```
 
-## Production Readiness
+## Limitations
 
 promdump is still in its experimental phase. It is used mainly to help with
 debugging issues. It's not suitable for production backup/restore operation.
+
+Like `kubectl cp`, promdump requires the `tar` binary in the Prometheus
+container.
+
+Currently, promdump only retrieves samples persisted in the on-disk blocks. It
+doesn't account for in-memory chunk data and content in the WAL file.
 
 ## License
 
