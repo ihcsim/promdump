@@ -7,7 +7,3 @@ download:
 
   # local directory to store the downloaded promdump binary
   localDir: /tmp
-
-prometheus:
-  # data directory in the prometheus pod
-  dataDir: /prometheus

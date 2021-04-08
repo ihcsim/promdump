@@ -114,8 +114,9 @@ Prometheus instance.
 	k8sConfigFlags = k8scliopts.NewConfigFlags(true)
 	k8sConfigFlags.AddFlags(rootCmd.PersistentFlags())
 
-	rootCmd.PersistentFlags().StringP("pod", "p", "", "targeted Prometheus pod name")
-	rootCmd.PersistentFlags().StringP("container", "c", "prometheus", "targeted Prometheus container name")
+	rootCmd.PersistentFlags().StringP("pod", "p", "", "Prometheus pod name")
+	rootCmd.PersistentFlags().StringP("container", "c", "prometheus", "Prometheus container name")
+	rootCmd.PersistentFlags().String("data-dir", "/data", "Prometheus data directory")
 	rootCmd.PersistentFlags().Bool("debug", false, "run promdump in debug mode")
 	rootCmd.PersistentFlags().BoolP("force", "f", false, "force the re-download of the promdump binary, which is saved to the local $TMP folder")
 	rootCmd.Flags().String("start-time", defaultStartTime.Format(timeFormat), "start time (UTC) of the samples (yyyy-mm-dd hh:mm:ss)")
@@ -273,13 +274,13 @@ func downloadBinary(cmd *cobra.Command, config *config.Config) (io.Reader, error
 }
 
 func uploadToContainer(bin io.Reader, config *config.Config, clientset *k8s.Clientset) error {
-	dataDir := config.GetString("prometheus.dataDir")
+	dataDir := config.GetString("data-dir")
 	execCmd := []string{"tar", "-C", dataDir, "-xzvf", "-"}
 	return clientset.ExecPod(execCmd, bin, ioutil.Discard, os.Stderr, false)
 }
 
 func dumpSamples(config *config.Config, clientset *k8s.Clientset) error {
-	dataDir := config.GetString("prometheus.dataDir")
+	dataDir := config.GetString("data-dir")
 	maxTime, err := time.Parse(timeFormat, config.GetString("end-time"))
 	if err != nil {
 		return err
@@ -300,7 +301,7 @@ func dumpSamples(config *config.Config, clientset *k8s.Clientset) error {
 }
 
 func clean(config *config.Config, clientset *k8s.Clientset) error {
-	dataDir := config.GetString("prometheus.dataDir")
+	dataDir := config.GetString("data-dir")
 	execCmd := []string{"rm", "-f", fmt.Sprintf("%s/promdump", dataDir)}
 	return clientset.ExecPod(execCmd, os.Stdin, os.Stdout, os.Stderr, false)
 }
