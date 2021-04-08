@@ -32,7 +32,7 @@ func initRestoreCmd(rootCmd *cobra.Command) (*cobra.Command, error) {
 		},
 	}
 
-	restoreCmd.Flags().StringP("dump-file", "d", "", "path to the sample dump TAR file")
+	restoreCmd.Flags().StringP("dump-file", "t", "", "path to the sample dump TAR file")
 	if err := restoreCmd.MarkFlagRequired("dump-file"); err != nil {
 		return nil, err
 	}

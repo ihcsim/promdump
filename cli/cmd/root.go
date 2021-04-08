@@ -116,7 +116,7 @@ Prometheus instance.
 
 	rootCmd.PersistentFlags().StringP("pod", "p", "", "Prometheus pod name")
 	rootCmd.PersistentFlags().StringP("container", "c", "prometheus", "Prometheus container name")
-	rootCmd.PersistentFlags().String("data-dir", "/data", "Prometheus data directory")
+	rootCmd.PersistentFlags().StringP("data-dir", "d", "/data", "Prometheus data directory")
 	rootCmd.PersistentFlags().Bool("debug", false, "run promdump in debug mode")
 	rootCmd.PersistentFlags().BoolP("force", "f", false, "force the re-download of the promdump binary, which is saved to the local $TMP folder")
 	rootCmd.Flags().String("start-time", defaultStartTime.Format(timeFormat), "start time (UTC) of the samples (yyyy-mm-dd hh:mm:ss)")
