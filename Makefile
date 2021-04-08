@@ -73,6 +73,16 @@ release: test
 	$(MAKE) TARGET_BIN_DIR=$(TARGET_RELEASE_DIR) publish ;\
 	cp ./cli/cmd/promdump.yaml "$(TARGET_RELEASE_DIR)/"
 
+.PHONY: test
+test/prometheus-repos:
+	helm repo add prometheus-community https://prometheus-community.github.io/helm-charts
+	helm repo add kube-state-metrics https://kubernetes.github.io/kube-state-metrics
+	helm repo update
+
+test/prometheus:
+	helm install prometheus prometheus-community/prometheus
+
+.PHONY: hack
 hack/deploy:
 	target_pod="$$(kubectl -n "$(NAMESPACE)" get po -oname | awk -F'/' '{print $$2}')" ;\
 	kubectl -n "$(NAMESPACE)" cp "$(TARGET_BIN_DIR)/promdump" "$${target_pod}:$(REMOTE_DIR)"

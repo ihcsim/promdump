@@ -5,10 +5,11 @@ transfer to another Prometheus instance.
 
 ## Why This Tool
 
-When debugging users' Kubernetes workloads, I find it invaluable to get access
-to the Prometheus metrics on their clusters. And to reduce the amount of back
-and forth (due to missing metrics, incorrect labels etc.), it makes sense to
-ask the users to _"get me everything around the time of the incident"_.
+When debugging users' Kubernetes clusters with restrictive access, I find it
+invaluable to get access to the Prometheus metrics on their clusters. To reduce
+the amount of back and forth (due to missing metrics, incorrect labels etc.), it
+makes sense to ask the users to _"get me everything around the time of the
+incident"_.
 
 The most common way to achieve this is to use commands like `kubectl exec` and
 `kubectl cp` to compress and dump Prometheus' entire data directory. On
@@ -43,6 +44,7 @@ Within the Prometheus container, promdump queries the Prometheus TSDB using the
 [`tsdb`](https://pkg.go.dev/github.com/prometheus/prometheus/tsdb) package. Data
 blocks that fall within the specified time range are gathered and streamed to
 stdout, which can be redirected to a compressed file on your local file system.
+promdump only performs read operations on the TSDB.
 
 The `restore` subcommand can then be used to copy this compressed file to
 another Prometheus instance.
@@ -56,8 +58,8 @@ Install promdump as a `kubectl` plugin:
 
 The promdump CLI can also be downloaded from the Release page.
 
-
-Create 2 Kubernetes clusters:
+For demonstration purposes, use [kind](https://kind.sigs.k8s.io/) to create two
+K8s clusters:
 ```sh
 $ kind create cluster --name dev-00
 
@@ -65,22 +67,29 @@ $ kind create cluster --name dev-01
 ```
 
 Install Prometheus using the community
-[Helm chart](https://github.com/prometheus-community/helm-charts/tree/main/charts/prometheus).
-
-Use a custom controller to generate some traffic:
+[Helm chart](https://github.com/prometheus-community/helm-charts/tree/main/charts/prometheus):
 ```sh
-
-
+helm install prometheus prometheus-community/prometheus
 ```
+
+Deploy a custom controller to send some traffic to the API server:
+```sh
+kubectl apply -f https://raw.githubusercontent.com/ihcsim/controllers/master/podlister/deployment.yaml
+```
+This controller is instrumented to generate a `demo_http_requests_total` metric,
+which we will use promdump to copy to the second cluster later.
 
 Dump the data from the first cluster:
 ```sh
-$ kubectl config use-context kind-dev-00
+$ CONTEXT="kind-dev-00"
+$ POD_NAME=$(kubectl --context "${CONTEXT}" get pods --namespace default -l "app=prometheus,component=server" -o jsonpath="{.items[0].metadata.name}")
+$ CONTAINER_NAME="prometheus-server"
+$ DATA_DIR="/data"
 
-$ kubectl -n prometheus get po -oname | awk -F'/' '{print $2}'
-prometheus-5c465dfc89-w72xp
-
-$ kubectl promdump meta -p prometheus-5c465dfc89-w72xp -n prometheus
+$ kubectl --context "${CONTEXT}" promdump meta \
+    -p "${POD_NAME}" \
+    -c "${CONTAINER_NAME}" \
+    -d "${DATA_DIR}"
 Earliest time:          | 2021-03-28 18:29:37
 Latest time:            | 2021-04-07 20:00:00
 Total number of blocks  | 17
@@ -89,7 +98,10 @@ Total number of series  | 186483
 Total size              | 388639976
 
 $ TARFILE="dump-`date +%s`.tar.gz"
-$ kubectl promdump -p prometheus-5c465dfc89-w72xp -n prometheus \
+$ kubectl --context "${CONTEXT}" promdump \
+    -p "${POD_NAME}" \
+    -c "${CONTAINER_NAME}" \
+    -d "${DATA_DIR}" \
     --start-time "2021-03-01 00:00:00" \
     --end-time "2021-04-07 16:02:00"  > ${TARFILE}"
 
@@ -99,15 +111,22 @@ $ tar -tf "target/testdata/${TARFILE}"
 
 Restore the data dump on the second cluster:
 ```sh
-$ kubectl config use-context kind-dev-01
+$ CONTEXT="kind-dev-01"
+$ kubectl --context="${CONTEXT}" promdump restore \
+    -p "${POD_NAME}"
+    -c "${CONTAINER_NAME}" \
+    -d "${DATA_DIR}" \
+    -t "${TARFILE}"
 
-$ kubectl promdump restore -p prometheus-5c465dfc89-w72xp -n prometheus \
-    -d "${TARFILE}"
-
-$ kubectl exec prometheus-5c465dfc89-w72xp -- ls -al /prometheus
+$ kubectl --context="${CONTEXT}" exec "${POD_NAME}" -- ls -al "${DATA_DIR}
 ```
 
-## LICENSE
+## Production Readiness
+
+promdump is still in its experimental phase. It is used mainly to help with
+debugging issues. It's not suitable for production backup/restore operation.
+
+## License
 
 Licensed under the Apache License, Version 2.0 (the "License"); you may not use
 these files except in compliance with the License. You may obtain a copy of the
