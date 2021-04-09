@@ -53,9 +53,10 @@ dist:
 	mkdir -p "$(TARGET_DIST_DIR)"
 	tar -C "$(TARGET_BIN_DIR)" -czvf "$(TARGET_DIST_DIR)/promdump-$(VERSION).tar.gz" promdump
 	shasum -a256 "$(TARGET_DIST_DIR)/promdump-$(VERSION).tar.gz"  | awk '{print $$1}' > "$(TARGET_DIST_DIR)/promdump-$(VERSION).tar.gz.sha256"
-	gsutil cp "$(TARGET_DIST_DIR)/promdump-$(VERSION).tar.gz" "$(TARGET_DIST_DIR)/promdump-$(VERSION).tar.gz.sha256" gs://promdump
-	sleep 5
-	gsutil acl ch -u AllUsers:R gs://promdump/promdump-$(VERSION).tar.gz gs://promdump/promdump-$(VERSION).tar.gz.sha256
+	aws s3 cp --content-type=application/octet-stream "$(TARGET_DIST_DIR)/promdump-$(VERSION).tar.gz" s3://promdump
+	aws s3 cp --content-type=text/plain "$(TARGET_DIST_DIR)/promdump-$(VERSION).tar.gz.sha256" s3://promdump
+	aws s3api put-object-acl --bucket promdump --key "promdump-$(VERSION).tar.gz" --acl public-read
+	aws s3api put-object-acl --bucket promdump --key "promdump-$(VERSION).tar.gz.sha256" --acl public-read
 
 .PHONY: release
 release:

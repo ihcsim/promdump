@@ -22,7 +22,7 @@ import (
 )
 
 const (
-	downloadRemoteHost = "https://storage.googleapis.com/promdump"
+	downloadRemoteHost = "https://promdump.s3-us-west-2.amazonaws.com"
 	timeFormat         = "2006-01-02 15:04:05"
 )
 
@@ -265,7 +265,7 @@ func run(cmd *cobra.Command, config *config.Config, clientset *k8s.Clientset) er
 func downloadBinary(cmd *cobra.Command) (io.Reader, error) {
 	var (
 		remoteURI    = fmt.Sprintf("%s/promdump-%s.tar.gz", downloadRemoteHost, Version)
-		remoteURISHA = fmt.Sprintf("%s/promdump-%s.sha256", downloadRemoteHost, Version)
+		remoteURISHA = fmt.Sprintf("%s/promdump-%s.tar.gz.sha256", downloadRemoteHost, Version)
 	)
 
 	force, err := cmd.Flags().GetBool("force")
