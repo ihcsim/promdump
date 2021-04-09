@@ -3,7 +3,7 @@ SHELL ?= /bin/bash
 BUILD_OS ?= linux
 BUILD_ARCH ?= amd64
 
-VERSION = $(shell git describe --abbrev=0)
+VERSION = $(shell git describe --abbrev=0)+$(shell git rev-parse --short HEAD)
 
 BASE_DIR = $(shell pwd)
 TARGET_DIR = $(BASE_DIR)/target
