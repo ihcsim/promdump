@@ -1,6 +1,6 @@
 # promdump
 
-promdump creates a data dump containing Prometheus metric samples within a time
+promdump captures a data dump of Prometheus metric samples within a certain time
 range. The data dump can then be transferred to another Prometheus container.
 
 ## Why This Tool
@@ -32,9 +32,8 @@ falls within a certain time range.
 ## How It Works
 
 The promdump CLI downloads the `promdump-$(VERSION).tar.gz` file from a public
-Cloud Storage bucket to your local `/tmp` folder. The download will be skipped
-if such a file already exists. The `-f` option can be used to force a
-re-download.
+storage bucket to your local `/tmp` folder. The download will be skipped if
+such a file already exists. The `-f` option can be used to force a re-download.
 
 Then the CLI uploads the decompresses the promdump binary to the targeted
 Prometheus container, via the pod's `exec` subresource.
@@ -73,7 +72,9 @@ $ kind create cluster --name dev-01
 Install Prometheus on both clusters using the community
 [Helm chart](https://github.com/prometheus-community/helm-charts/tree/main/charts/prometheus):
 ```sh
-helm install prometheus prometheus-community/prometheus
+helm --kube-context=kind-dev-00 install prometheus prometheus-community/prometheus
+
+helm --kube-context=kind-dev-01 install prometheus prometheus-community/prometheus
 ```
 
 Deploy a custom controller that generates some custom metrics to the first

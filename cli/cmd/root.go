@@ -27,10 +27,14 @@ const (
 )
 
 var (
+	defaultContainer      = "prometheus-server"
+	defaultDataDir        = "/data"
+	defaultDebugEnabled   = false
 	defaultEndTime        = time.Now()
-	defaultStartTime      = defaultEndTime.Add(-1 * time.Hour)
+	defaultForceDownload  = false
 	defaultLogLevel       = "error"
 	defaultNamespace      = "default"
+	defaultStartTime      = defaultEndTime.Add(-1 * time.Hour)
 	defaultRequestTimeout = "10s"
 
 	downloadRequestTimeout = time.Second * 10
@@ -49,12 +53,13 @@ var (
 func initRootCmd() (*cobra.Command, error) {
 	rootCmd := &cobra.Command{
 		Use:   `promdump -p POD --start-time "yyyy-mm-dd hh:mm:ss" --end-time "yyyy-mm-dd hh:mm:ss" [-n NAMESPACE] [-c CONTAINER] [-d DATA_DIR]`,
-		Short: "Creates a data dump containing Prometheus metric samples within a time range",
-		Example: `# creates a data dump containing metric samples between
+		Short: "Captures a data dump containing Prometheus metric samples within a certain time range",
+		Example: `# captures a data dump of metric samples between
 # 2021-01-01 00:00:00 and 2021-04-02 16:59:00, from the Prometheus <pod> in the
 # <ns> namespace.
 kubectl promdump -p <pod> -n <ns> --start-time "2021-01-01 00:00:00" --end-time "2021-04-02 16:59:00" > dump.tar.gz`,
-		Long: `promdump creates a data dump containing Prometheus metric samples within a time range.
+		Long: `promdump captures a data dump of Prometheus metric samples within a certain time
+range.
 
 It is different from 'promtool tsdb dump' in such a way that its output can be
 reused in another Prometheus instance. And unlike the Promethues TSDB snapshot
@@ -63,8 +68,8 @@ API, promdump doesn't require Prometheus to be started with the
 offers the flexibility to capture data that falls within a specific time range.
 
 When run, the promdump CLI downloads the promdump tar.gz file from a public
-Cloud Storage bucket to your local /tmp folder. The download will be skipped if
-such a file already exists. The -f option can be used to force a re-download.
+storage bucket to your local /tmp folder. The download will be skipped if such
+a file already exists. The -f option can be used to force a re-download.
 
 Then the CLI untar the archive file and upload the promdump binary to your
 in-cluster Prometheus container, via the pod's exec subresource.
@@ -125,10 +130,10 @@ Prometheus instance.
 	k8sConfigFlags.AddFlags(rootCmd.PersistentFlags())
 
 	rootCmd.PersistentFlags().StringP("pod", "p", "", "Prometheus pod name")
-	rootCmd.PersistentFlags().StringP("container", "c", "prometheus", "Prometheus container name")
-	rootCmd.PersistentFlags().StringP("data-dir", "d", "/data", "Prometheus data directory")
-	rootCmd.PersistentFlags().Bool("debug", false, "run promdump in debug mode")
-	rootCmd.PersistentFlags().BoolP("force", "f", false, "force the re-download of the promdump binary, which is saved to the local $TMP folder")
+	rootCmd.PersistentFlags().StringP("container", "c", defaultContainer, "Prometheus container name")
+	rootCmd.PersistentFlags().StringP("data-dir", "d", defaultDataDir, "Prometheus data directory")
+	rootCmd.PersistentFlags().Bool("debug", defaultDebugEnabled, "run promdump in debug mode")
+	rootCmd.PersistentFlags().BoolP("force", "f", defaultForceDownload, "force the re-download of the promdump binary, which is saved to the local $TMP folder")
 	rootCmd.Flags().String("start-time", defaultStartTime.Format(timeFormat), "start time (UTC) of the samples (yyyy-mm-dd hh:mm:ss)")
 	rootCmd.Flags().String("end-time", defaultEndTime.Format(timeFormat), "end time (UTC) of the samples (yyyy-mm-dd hh:mm:ss")
 

@@ -62,7 +62,7 @@ dist:
 release:
 	rm -rf "$(TARGET_RELEASES_DIR)" ;\
 	mkdir -p "$(TARGET_RELEASES_DIR)" ;\
-	arch=( amd64 386 );\
+	arch=( amd64 );\
 	goos=( linux darwin windows ) ;\
 	for arch in "$${arch[@]}" ; do \
 		for os in "$${goos[@]}" ; do \
