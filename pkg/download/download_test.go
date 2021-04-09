@@ -18,7 +18,7 @@ func TestDownload(t *testing.T) {
 	var (
 		dirname = "promdump-test"
 		force   = false
-		logger  = log.New("debug", ioutil.Discard)
+		logger  = log.New("debug", os.Stdout)
 		timeout = time.Second
 
 		mux          = http.NewServeMux()
@@ -38,7 +38,6 @@ func TestDownload(t *testing.T) {
 	}))
 	mux.Handle("/checksum", http.HandlerFunc(func(resp http.ResponseWriter, req *http.Request) {
 		resp.WriteHeader(http.StatusOK)
-
 		d := make([]byte, sha256.Size)
 		for i, b := range responseSHA {
 			d[i] = b
