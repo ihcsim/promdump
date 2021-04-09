@@ -16,38 +16,41 @@ import (
 
 func TestDownload(t *testing.T) {
 	var (
-		dirname = "promdump-test"
-		force   = false
-		logger  = log.New("debug", os.Stdout)
-		timeout = time.Second
+		dirname         = "promdump-test"
+		downloadContent = []byte("test response data")
+		force           = false
+		logger          = log.New("debug", ioutil.Discard)
+		timeout         = time.Second
 
 		mux          = http.NewServeMux()
 		server       = httptest.NewServer(mux)
 		remoteURI    = server.URL
 		remoteURISHA = fmt.Sprintf("%s/checksum", server.URL)
-
-		response    = []byte("test response data")
-		responseSHA = sha256.Sum256(response)
 	)
 
+	// returns the download content
 	mux.Handle("/", http.HandlerFunc(func(resp http.ResponseWriter, req *http.Request) {
 		resp.WriteHeader(http.StatusOK)
-		if _, err := resp.Write(response); err != nil {
+		if _, err := resp.Write(downloadContent); err != nil {
 			t.Fatal("unexpected error: ", err)
 		}
 	}))
+
+	// returns the checksum of the download content
 	mux.Handle("/checksum", http.HandlerFunc(func(resp http.ResponseWriter, req *http.Request) {
-		resp.WriteHeader(http.StatusOK)
-		d := make([]byte, sha256.Size)
-		for i, b := range responseSHA {
-			d[i] = b
+		h := sha256.New()
+		if _, err := h.Write(downloadContent); err != nil {
+			t.Fatal("unexpected error: ", err)
 		}
+		d := fmt.Sprintf("%x", h.Sum(nil))
 
-		if _, err := resp.Write(d); err != nil {
+		resp.WriteHeader(http.StatusOK)
+		if _, err := resp.Write([]byte(d)); err != nil {
 			t.Fatal("unexpected error: ", err)
 		}
 	}))
 
+	// the downloaded content will be saved in tempDir
 	tempDir, err := ioutil.TempDir("", dirname)
 	if err != nil {
 		t.Fatal("unexpected error: ", err)
@@ -55,18 +58,18 @@ func TestDownload(t *testing.T) {
 	defer os.RemoveAll(tempDir)
 
 	d := New(tempDir, timeout, logger)
-
 	reader, err := d.Get(force, remoteURI, remoteURISHA)
 	if err != nil {
 		t.Fatal("unexpected error: ", err)
 	}
 
-	received, err := ioutil.ReadAll(reader)
+	// read and compare the downloaded content with the actual data
+	actual, err := ioutil.ReadAll(reader)
 	if err != nil {
 		t.Fatal("unexpected error: ", err)
 	}
 
-	if !reflect.DeepEqual(received, response) {
-		t.Errorf("mismatch response. expected:%s, actual:%s", received, response)
+	if !reflect.DeepEqual(actual, downloadContent) {
+		t.Errorf("mismatch response. expected:%s, actual:%s", downloadContent, actual)
 	}
 }

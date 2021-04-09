@@ -9,7 +9,7 @@ import (
 	"os"
 	"path"
 	"path/filepath"
-	"reflect"
+	"strings"
 	"time"
 
 	"github.com/go-kit/kit/log/level"
@@ -123,8 +123,8 @@ func (d *Download) checksum(file *os.File, remote string) error {
 	}
 	defer resp.Body.Close()
 
-	expected := &bytes.Buffer{}
-	if _, err := io.CopyN(expected, resp.Body, resp.ContentLength); err != nil {
+	buf := &bytes.Buffer{}
+	if _, err := io.CopyN(buf, resp.Body, resp.ContentLength); err != nil {
 		return err
 	}
 
@@ -136,13 +136,13 @@ func (d *Download) checksum(file *os.File, remote string) error {
 		return err
 	}
 
-	expectedHex := fmt.Sprintf("%x", expected)
-	actualHex := fmt.Sprintf("%x", sha.Sum(nil))
+	actual := fmt.Sprintf("%x", sha.Sum(nil))
+	expected := strings.TrimSpace(buf.String())
 	_ = level.Debug(d.logger).Log("message", "comparing checksum",
-		"expected", expectedHex,
-		"actual", actualHex)
-	if !reflect.DeepEqual(expectedHex, actualHex) {
-		return fmt.Errorf("%w: expected:%x, actual:%x", errChecksumMismatch, expectedHex, actualHex)
+		"expected", expected,
+		"actual", actual)
+	if expected != actual {
+		return fmt.Errorf("%w: expected:%s, actual:%s", errChecksumMismatch, expected, actual)
 	}
 
 	_ = level.Info(d.logger).Log("message", "confirmed checksum")
