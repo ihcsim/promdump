@@ -55,8 +55,6 @@ dist:
 	shasum -a256 "$(TARGET_DIST_DIR)/promdump-$(VERSION).tar.gz"  | awk '{print $$1}' > "$(TARGET_DIST_DIR)/promdump-$(VERSION).tar.gz.sha256"
 	aws s3 cp --content-type=application/octet-stream "$(TARGET_DIST_DIR)/promdump-$(VERSION).tar.gz" s3://promdump
 	aws s3 cp --content-type=text/plain "$(TARGET_DIST_DIR)/promdump-$(VERSION).tar.gz.sha256" s3://promdump
-	aws s3api put-object-acl --bucket promdump --key "promdump-$(VERSION).tar.gz" --acl public-read
-	aws s3api put-object-acl --bucket promdump --key "promdump-$(VERSION).tar.gz.sha256" --acl public-read
 
 .PHONY: release
 release:
@@ -75,7 +73,7 @@ release:
 plugins:
 	rm -rf "$(TARGET_PLUGINS_DIR)" ;\
 	mkdir -p "$(TARGET_PLUGINS_DIR)" ;\
-	arch=( amd64 386 );\
+	arch=( amd64 );\
 	goos=( linux darwin windows ) ;\
 	for arch in "$${arch[@]}" ; do \
 		for os in "$${goos[@]}" ; do \
