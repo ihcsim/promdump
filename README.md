@@ -1,7 +1,7 @@
 # promdump
 
 promdump captures a data dump of Prometheus metric samples within a certain time
-range. The data dump can then be transferred to another Prometheus container.
+range.
 
 ## Why This Tool
 
@@ -77,21 +77,29 @@ helm --kube-context=kind-dev-00 install prometheus prometheus-community/promethe
 helm --kube-context=kind-dev-01 install prometheus prometheus-community/prometheus
 ```
 
-Deploy a custom controller that generates some custom metrics to the first
-cluster:
+Deploy a custom controller to cluster `dev-00`. This controller is annotated to
+be scraped by Prometheus:
 ```sh
 kubectl --context=kind-dev-00 apply -f https://raw.githubusercontent.com/ihcsim/controllers/master/podlister/deployment.yaml
 ```
-This controller is instrumented to generate a custom `demo_http_requests_total`
-metric, which we will use promdump to copy to the second cluster later.
 
-Dump the data from the first cluster:
+Port-forward to the Prometheus pod to find the custom `demo_http_requests_total`
+metric. Later, we will use promdump to copy the samples of this metric over to
+the `dev-01` cluster:
 ```sh
 CONTEXT="kind-dev-00"
 POD_NAME=$(kubectl --context "${CONTEXT}" get pods --namespace default -l "app=prometheus,component=server" -o jsonpath="{.items[0].metadata.name}")
+kubectl --context="${CONTEXT}" port-forward "${POD_NAME}" 9090
+```
+
+![Demo controller metrics](img/demo-controller-metrics.png)
+
+Dump the data from the first cluster:
+```sh
 CONTAINER_NAME="prometheus-server"
 DATA_DIR="/data"
 
+# check the tsdb metadata
 kubectl promdump meta \
   --context "${CONTEXT}" \
   -p "${POD_NAME}" \
@@ -104,29 +112,49 @@ Total number of samples | 459813486
 Total number of series  | 186483
 Total size              | 388639976
 
+# capture the data dump
 TARFILE="dump-`date +%s`.tar.gz"
 kubectl promdump \
   --context "${CONTEXT}" \
   -p "${POD_NAME}" \
   -c "${CONTAINER_NAME}" \
   -d "${DATA_DIR}" \
-  --start-time "2021-03-01 00:00:00" \
+  --start-time "2021-04-01 00:00:00" \
   --end-time "2021-04-07 16:02:00"  > "${TARFILE}"
 
 # view the content of the tar file
 $ tar -tf "target/testdata/${TARFILE}"
 ```
 
-Restore the data dump on the second cluster:
+Restore the data dump to the Prometheus pod on the `dev-01` cluster:
 ```sh
-$ CONTEXT="kind-dev-01"
-$ kubectl --context="${CONTEXT}" promdump restore \
-    -p "${POD_NAME}"
-    -c "${CONTAINER_NAME}" \
-    -d "${DATA_DIR}" \
-    -t "${TARFILE}"
+CONTEXT="kind-dev-01"
+POD_NAME=$(kubectl --context "${CONTEXT}" get pods --namespace default -l "app=prometheus,component=server" -o jsonpath="{.items[0].metadata.name}")
+CONTAINER_NAME="prometheus-server"
+DATA_DIR="/data"
 
-$ kubectl --context="${CONTEXT}" exec "${POD_NAME}" -- ls -al "${DATA_DIR}
+# check the tsdb metadata
+kubectl promdump meta \
+  --context "${CONTEXT}" \
+  -p "${POD_NAME}" \
+  -c "${CONTAINER_NAME}" \
+  -d "${DATA_DIR}"
+
+# restore the data dump found at ${TARFILE}
+kubectl promdump restore \
+  --context="${CONTEXT}" \
+  -p "${POD_NAME}" \
+  -c "${CONTAINER_NAME}" \
+  -d "${DATA_DIR}" \
+  -t "${TARFILE}"
+
+kubectl --context="${CONTEXT}" exec "${POD_NAME}" -c "${CONTAINER_NAME}" -- ls -al "${DATA_DIR}"
+```
+
+Port-forward to the Prometheus pod and confirm that the samples of the
+`demo_http_requests_total` metric have been copied over:
+```sh
+kubectl --context=${CONTEXT} port-forward ${POD_NAME} 9091:9090
 ```
 
 ## Limitations

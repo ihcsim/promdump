@@ -199,7 +199,7 @@ func validate(cmd *cobra.Command) error {
 		return fmt.Errorf("start time (%s) cannot be after end time (%s)", argStartTime, argEndTime)
 	}
 
-	now := time.Now()
+	now := time.Now().UTC()
 	if startTime.After(now) {
 		return fmt.Errorf("start time (%s) cannot be after now (%s)", argStartTime, now.Format(timeFormat))
 	}
