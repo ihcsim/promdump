@@ -3,14 +3,15 @@ SHELL ?= /bin/bash
 BUILD_OS ?= linux
 BUILD_ARCH ?= amd64
 
-VERSION = $(shell git describe --abbrev=0)+$(shell git rev-parse --short HEAD)
+VERSION = $(shell git describe --abbrev=0)
+GIT_COMMIT=$(shell git rev-parse --short HEAD)
 
 BASE_DIR = $(shell pwd)
 TARGET_DIR = $(BASE_DIR)/target
 TARGET_BIN_DIR = $(TARGET_DIR)/bin
 TARGET_DIST_DIR = $(TARGET_DIR)/dist
-TARGET_RELEASES_DIR = $(TARGET_DIR)/releases/$(VERSION)
-TARGET_PLUGINS_DIR = $(TARGET_RELEASES_DIR)/plugins
+TARGET_RELEASE_DIR = $(TARGET_DIR)/releases/$(VERSION)
+TARGET_PLUGINS_DIR = $(TARGET_RELEASE_DIR)/plugins
 
 all: test lint build dist
 
@@ -44,7 +45,10 @@ core:
 
 .PHONY: cli
 cli:
-	CGO_ENABLED=0 GOOS="$(BUILD_OS)" GOARCH="$(BUILD_ARCH)" go build -ldflags="-X 'main.Version=$(VERSION)'" -o "$(TARGET_BIN_DIR)/cli-$(BUILD_OS)-$(BUILD_ARCH)-$(VERSION)" ./cli/cmd ;\
+	if [ $(BUILD_OS) == "windows" ]; then \
+		extension=".exe" ;\
+	fi ;\
+	CGO_ENABLED=0 GOOS="$(BUILD_OS)" GOARCH="$(BUILD_ARCH)" go build -ldflags="-X 'main.Version=$(VERSION)' -X 'main.Commit=$(GIT_COMMIT)'" -o "$(TARGET_BIN_DIR)/cli-$(BUILD_OS)-$(BUILD_ARCH)-$(VERSION)$${extension}" ./cli/cmd ;\
 	shasum -a256 "$(TARGET_BIN_DIR)/cli-$(BUILD_OS)-$(BUILD_ARCH)-$(VERSION)"  | awk '{print $$1}' > "$(TARGET_BIN_DIR)/cli-$(BUILD_OS)-$(BUILD_ARCH)-$(VERSION).sha256"
 
 .PHONY: dist
@@ -58,31 +62,28 @@ dist:
 
 .PHONY: release
 release:
-	rm -rf "$(TARGET_RELEASES_DIR)" ;\
-	mkdir -p "$(TARGET_RELEASES_DIR)" ;\
+	rm -rf "$(TARGET_RELEASE_DIR)" ;\
+	mkdir -p "$(TARGET_RELEASE_DIR)" ;\
 	arch=( amd64 );\
 	goos=( linux darwin windows ) ;\
 	for arch in "$${arch[@]}" ; do \
 		for os in "$${goos[@]}" ; do \
-			$(MAKE) BUILD_OS="$${os}" BUILD_ARCH="$${arch}" TARGET_BIN_DIR=$(TARGET_RELEASES_DIR) cli ;\
+			$(MAKE) BUILD_OS="$${os}" BUILD_ARCH="$${arch}" TARGET_BIN_DIR=$(TARGET_RELEASE_DIR) cli;\
+			$(MAKE) BUILD_OS="$${os}" BUILD_ARCH="$${arch}" plugin ;\
 		done ;\
 	done ;\
-	$(MAKE) TARGET_BIN_DIR=$(TARGET_RELEASES_DIR) core dist;\
+	$(MAKE) TARGET_BIN_DIR=$(TARGET_RELEASE_DIR) core dist ;\
 
-.PHONY: plugins
-plugins:
-	rm -rf "$(TARGET_PLUGINS_DIR)" ;\
+.PHONY: plugin
+plugin:
 	mkdir -p "$(TARGET_PLUGINS_DIR)" ;\
-	arch=( amd64 );\
-	goos=( linux darwin windows ) ;\
-	for arch in "$${arch[@]}" ; do \
-		for os in "$${goos[@]}" ; do \
-			cp "$(TARGET_RELEASES_DIR)/cli-$${os}-$${arch}-$(VERSION)" "$(TARGET_PLUGINS_DIR)/kubectl-promdump" ;\
-			tar -C "$(TARGET_PLUGINS_DIR)" -czvf "$(TARGET_PLUGINS_DIR)/kubectl-promdump-$${os}-$${arch}-$(VERSION).tar.gz" kubectl-promdump ;\
-			rm "$(TARGET_PLUGINS_DIR)/kubectl-promdump" ;\
-			shasum -a256 $(TARGET_PLUGINS_DIR)/kubectl-promdump-$${os}-$${arch}-$(VERSION).tar.gz | awk '{print $$1}' > $(TARGET_PLUGINS_DIR)/kubectl-promdump-$${os}-$${arch}-$(VERSION).tar.gz.sha256 ;\
-		done ;\
-	done ;\
+	if [ $(BUILD_OS) == "windows" ]; then \
+		extension=".exe" ;\
+	fi ;\
+	cp "$(TARGET_RELEASE_DIR)/cli-$(BUILD_OS)-$(BUILD_ARCH)-$(VERSION)$${extension}" "$(TARGET_PLUGINS_DIR)/kubectl-promdump$${extension}" ;\
+	tar -C "$(TARGET_PLUGINS_DIR)" -czvf "$(TARGET_PLUGINS_DIR)/kubectl-promdump-$(BUILD_OS)-$(BUILD_ARCH)-$(VERSION).tar.gz" kubectl-promdump$${extension} ;\
+	rm "$(TARGET_PLUGINS_DIR)/kubectl-promdump$${extension}" ;\
+	shasum -a256 $(TARGET_PLUGINS_DIR)/kubectl-promdump-$(BUILD_OS)-$(BUILD_ARCH)-$(VERSION).tar.gz | awk '{print $$1}' > $(TARGET_PLUGINS_DIR)/kubectl-promdump-$(BUILD_OS)-$(BUILD_ARCH)-$(VERSION).tar.gz.sha256 ;\
 
 .PHONY: test
 test/prometheus-repos:

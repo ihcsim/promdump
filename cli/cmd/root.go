@@ -48,6 +48,7 @@ var (
 
 	// Version is the version of the CLI, set during build time
 	Version = "v0.1.0"
+	Commit  = "unknown"
 )
 
 func initRootCmd() (*cobra.Command, error) {
@@ -85,7 +86,7 @@ Prometheus instance.
 
 [1] https://pkg.go.dev/github.com/prometheus/prometheus/tsdb
 		`,
-		Version:       Version,
+		Version:       fmt.Sprintf("%s+%s", Version, Commit),
 		SilenceErrors: true, // let main() handles errors
 		SilenceUsage:  true,
 		RunE: func(cmd *cobra.Command, args []string) error {
