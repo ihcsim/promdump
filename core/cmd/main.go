@@ -128,43 +128,49 @@ func compressed(dataDir string, blocks []*promtsdb.Block, writer *io.PipeWriter)
 	var (
 		buf = &bytes.Buffer{}
 		tw  = tar.NewWriter(buf)
+
+		dirChunksHead = filepath.Join(dataDir, "chunks_head")
+		dirWAL        = filepath.Join(dataDir, "wal")
 	)
 
+	writeHeader := func(path string, info os.FileInfo, typeFlag byte) error {
+		name := path[len(dataDir)+1:]
+		header := &tar.Header{
+			Name:     name,
+			Mode:     int64(info.Mode()),
+			ModTime:  info.ModTime(),
+			Size:     info.Size(),
+			Typeflag: typeFlag,
+		}
+
+		return tw.WriteHeader(header)
+	}
+
+	dirs := []string{
+		dirChunksHead,
+		dirWAL,
+	}
 	for _, block := range blocks {
-		if err := filepath.Walk(block.Dir(), func(path string, info os.FileInfo, err error) error {
+		dirs = append(dirs, block.Dir())
+	}
+
+	// walk all the block directories
+	for _, dir := range dirs {
+		if err := filepath.Walk(dir, func(path string, info os.FileInfo, err error) error {
 			if err != nil {
 				return err
-			}
-
-			writeHeader := func(typeFlag byte) error {
-				name := path[len(dataDir)+1:]
-				header := &tar.Header{
-					Name:     name,
-					Mode:     int64(info.Mode()),
-					ModTime:  info.ModTime(),
-					Size:     info.Size(),
-					Typeflag: typeFlag,
-				}
-
-				return tw.WriteHeader(header)
 			}
 
 			// if dir, only write header
 			if info.IsDir() {
-				return writeHeader(tar.TypeDir)
+				return writeHeader(path, info, tar.TypeDir)
 			}
 
-			if err := writeHeader(tar.TypeReg); err != nil {
+			if err := writeHeader(path, info, tar.TypeReg); err != nil {
 				return err
 			}
 
-			file, err := os.Open(path)
-			if err != nil {
-				return fmt.Errorf("failed to open data file: %w", err)
-			}
-			defer file.Close()
-
-			data, err := ioutil.ReadAll(file)
+			data, err := ioutil.ReadFile(path)
 			if err != nil {
 				return fmt.Errorf("failed to read data file: %w", err)
 			}
