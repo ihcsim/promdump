@@ -26,9 +26,10 @@ const (
 )
 
 var (
-	logger             *log.Logger
-	resultNoDataBlocks = "no data blocks found"
-	targetDir          = os.TempDir()
+	logger                *log.Logger
+	msgNoHeadBlocks       = "no head blocks found"
+	msgNoPersistentBlocks = "no persistent blocks found"
+	targetDir             = os.TempDir()
 )
 
 func main() {
@@ -60,14 +61,19 @@ func main() {
 		exit(err)
 	}
 
-	tsdb := tsdb.New(*dataDir, logger)
+	tsdb, err := tsdb.New(*dataDir, logger)
+	if err != nil {
+		exit(err)
+	}
+	defer tsdb.Close()
+
 	if *showMeta {
-		meta, err := tsdb.Meta()
+		headMeta, blockMeta, err := tsdb.Meta()
 		if err != nil {
 			exit(err)
 		}
 
-		if _, err := writeMeta(meta); err != nil {
+		if _, err := writeMeta(headMeta, blockMeta); err != nil {
 			exit(err)
 		}
 
@@ -87,28 +93,57 @@ func main() {
 	_ = level.Info(logger.Logger).Log("message", "operation completed", "numBytesRead", nbr)
 }
 
-func writeMeta(meta *tsdb.Meta) (int64, error) {
-	if meta.Start.IsZero() && meta.End.IsZero() {
-		return handleNoDataBlocks()
+func writeMeta(headMeta *tsdb.HeadMeta, blockMeta *tsdb.BlockMeta) (int64, error) {
+	if headMeta.MinTime.IsZero() && headMeta.MaxTime.IsZero() {
+		return handleEmptyDataBlocks(msgNoHeadBlocks)
 	}
 
-	output := fmt.Sprintf(`Earliest time:          | %s
-Latest time:            | %s
+	head := fmt.Sprintf(`Head Block Metadata
+------------------------
+Minimum time (UTC): | %s
+Maximum time (UTC): | %s
+Number of series    | %d
+`,
+		headMeta.MinTime.Format(timeFormatOut),
+		headMeta.MaxTime.Format(timeFormatOut),
+		headMeta.NumSeries)
+
+	buf := bytes.NewBuffer([]byte(head))
+
+	if blockMeta.MinTime.IsZero() && blockMeta.MaxTime.IsZero() {
+		if _, err := buf.WriteTo(os.Stdout); err != nil {
+			return 0, err
+		}
+		return handleEmptyDataBlocks(msgNoPersistentBlocks)
+	}
+
+	blocks := fmt.Sprintf(`
+Persistent Blocks Metadata
+----------------------------
+Minimum time (UTC):     | %s
+Maximum time (UTC):     | %s
 Total number of blocks  | %d
 Total number of samples | %d
 Total number of series  | %d
 Total size              | %d
 `,
-		meta.Start.Format(timeFormatOut), meta.End.Format(timeFormatOut),
-		meta.BlockCount, meta.TotalSamples, meta.TotalSeries, meta.TotalSize)
+		blockMeta.MinTime.Format(timeFormatOut),
+		blockMeta.MaxTime.Format(timeFormatOut),
+		blockMeta.BlockCount,
+		blockMeta.NumSamples,
+		blockMeta.NumSeries,
+		blockMeta.Size)
 
-	buf := bytes.NewBuffer([]byte(output))
-	return io.Copy(os.Stdout, buf)
+	if _, err := buf.Write([]byte(blocks)); err != nil {
+		return 0, err
+	}
+
+	return buf.WriteTo(os.Stdout)
 }
 
 func writeBlocks(dataDir string, blocks []*promtsdb.Block, w io.Writer) (int64, error) {
 	if len(blocks) == 0 {
-		return handleNoDataBlocks()
+		return handleEmptyDataBlocks(msgNoPersistentBlocks)
 	}
 
 	pipeReader, pipeWriter := io.Pipe()
@@ -225,9 +260,9 @@ func validateTimestamp(minTime, maxTime int64) error {
 	return nil
 }
 
-func handleNoDataBlocks() (int64, error) {
-	buf := bytes.NewBuffer([]byte(resultNoDataBlocks + "\n"))
-	return io.Copy(os.Stderr, buf)
+func handleEmptyDataBlocks(msg string) (int64, error) {
+	buf := bytes.NewBuffer([]byte(msg + "\n"))
+	return buf.WriteTo(os.Stderr)
 }
 
 func exit(err error) {

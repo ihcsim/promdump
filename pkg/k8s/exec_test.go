@@ -68,8 +68,8 @@ func TestExec(t *testing.T) {
 	testConfig.Set("pod", "test-pod")
 	testConfig.Set("container", "test-container")
 	testConfig.Set("request-timeout", "5s")
-	testConfig.Set("start-time", "2000-01-01 00:00:00")
-	testConfig.Set("end-time", "2000-01-02 00:00:00")
+	testConfig.Set("min-time", "2000-01-01 00:00:00")
+	testConfig.Set("max-time", "2000-01-02 00:00:00")
 
 	execRoundTripper := func(req *http.Request) (*http.Response, error) {
 		return &http.Response{

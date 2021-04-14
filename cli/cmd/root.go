@@ -30,11 +30,11 @@ var (
 	defaultContainer      = "prometheus-server"
 	defaultDataDir        = "/data"
 	defaultDebugEnabled   = false
-	defaultEndTime        = time.Now()
+	defaultMaxTime        = time.Now()
 	defaultForceDownload  = false
 	defaultLogLevel       = "error"
 	defaultNamespace      = "default"
-	defaultStartTime      = defaultEndTime.Add(-1 * time.Hour)
+	defaultMinTime        = defaultMaxTime.Add(-1 * time.Hour)
 	defaultRequestTimeout = "10s"
 
 	downloadRequestTimeout = time.Second * 10
@@ -53,12 +53,12 @@ var (
 
 func initRootCmd() (*cobra.Command, error) {
 	rootCmd := &cobra.Command{
-		Use:   `promdump -p POD --start-time "yyyy-mm-dd hh:mm:ss" --end-time "yyyy-mm-dd hh:mm:ss" [-n NAMESPACE] [-c CONTAINER] [-d DATA_DIR]`,
+		Use:   `promdump -p POD --min-time "yyyy-mm-dd hh:mm:ss" --max-time "yyyy-mm-dd hh:mm:ss" [-n NAMESPACE] [-c CONTAINER] [-d DATA_DIR]`,
 		Short: "Captures a data dump containing Prometheus metric samples within a certain time range",
 		Example: `# captures a data dump of metric samples between
 # 2021-01-01 00:00:00 and 2021-04-02 16:59:00, from the Prometheus <pod> in the
 # <ns> namespace.
-kubectl promdump -p <pod> -n <ns> --start-time "2021-01-01 00:00:00" --end-time "2021-04-02 16:59:00" > dump.tar.gz`,
+kubectl promdump -p <pod> -n <ns> --min-time "2021-01-01 00:00:00" --max-time "2021-04-02 16:59:00" > dump.tar.gz`,
 		Long: `promdump captures a data dump of Prometheus metric samples within a certain time
 range.
 
@@ -135,8 +135,8 @@ Prometheus instance.
 	rootCmd.PersistentFlags().StringP("data-dir", "d", defaultDataDir, "Prometheus data directory")
 	rootCmd.PersistentFlags().Bool("debug", defaultDebugEnabled, "run promdump in debug mode")
 	rootCmd.PersistentFlags().BoolP("force", "f", defaultForceDownload, "force the re-download of the promdump binary, which is saved to the local $TMP folder")
-	rootCmd.Flags().String("start-time", defaultStartTime.Format(timeFormat), "start time (UTC) of the samples (yyyy-mm-dd hh:mm:ss)")
-	rootCmd.Flags().String("end-time", defaultEndTime.Format(timeFormat), "end time (UTC) of the samples (yyyy-mm-dd hh:mm:ss")
+	rootCmd.Flags().String("min-time", defaultMinTime.Format(timeFormat), "min time (UTC) of the samples (yyyy-mm-dd hh:mm:ss)")
+	rootCmd.Flags().String("max-time", defaultMaxTime.Format(timeFormat), "max time (UTC) of the samples (yyyy-mm-dd hh:mm:ss")
 
 	rootCmd.Flags().SortFlags = false
 	if err := rootCmd.MarkPersistentFlagRequired("pod"); err != nil {
@@ -175,37 +175,37 @@ func setMissingDefaults(cmd *cobra.Command) error {
 }
 
 func validate(cmd *cobra.Command) error {
-	argStartTime, err := cmd.Flags().GetString("start-time")
+	argMinTime, err := cmd.Flags().GetString("min-time")
 	if err != nil {
 		return err
 	}
 
-	argEndTime, err := cmd.Flags().GetString("end-time")
+	argMaxTime, err := cmd.Flags().GetString("max-time")
 	if err != nil {
 		return err
 	}
 
-	startTime, err := time.Parse(timeFormat, argStartTime)
+	minTime, err := time.Parse(timeFormat, argMinTime)
 	if err != nil {
 		return err
 	}
 
-	endTime, err := time.Parse(timeFormat, argEndTime)
+	maxTime, err := time.Parse(timeFormat, argMaxTime)
 	if err != nil {
 		return err
 	}
 
-	if startTime.After(endTime) {
-		return fmt.Errorf("start time (%s) cannot be after end time (%s)", argStartTime, argEndTime)
+	if minTime.After(maxTime) {
+		return fmt.Errorf("min time (%s) cannot be after max time (%s)", argMinTime, argMaxTime)
 	}
 
 	now := time.Now().UTC()
-	if startTime.After(now) {
-		return fmt.Errorf("start time (%s) cannot be after now (%s)", argStartTime, now.Format(timeFormat))
+	if minTime.After(now) {
+		return fmt.Errorf("min time (%s) cannot be after now (%s)", argMinTime, now.Format(timeFormat))
 	}
 
-	if endTime.After(now) {
-		return fmt.Errorf("end time (%s) cannot be after now (%s)", argEndTime, now.Format(timeFormat))
+	if maxTime.After(now) {
+		return fmt.Errorf("max time (%s) cannot be after now (%s)", argMaxTime, now.Format(timeFormat))
 	}
 
 	return nil
@@ -291,11 +291,11 @@ func uploadToContainer(bin io.Reader, config *config.Config, clientset *k8s.Clie
 
 func dumpSamples(config *config.Config, clientset *k8s.Clientset) error {
 	dataDir := config.GetString("data-dir")
-	maxTime, err := time.Parse(timeFormat, config.GetString("end-time"))
+	maxTime, err := time.Parse(timeFormat, config.GetString("max-time"))
 	if err != nil {
 		return err
 	}
-	minTime, err := time.Parse(timeFormat, config.GetString("start-time"))
+	minTime, err := time.Parse(timeFormat, config.GetString("min-time"))
 	if err != nil {
 		return err
 	}

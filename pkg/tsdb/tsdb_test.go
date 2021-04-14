@@ -4,14 +4,16 @@ import (
 	"fmt"
 	"io/ioutil"
 	"os"
+	"path/filepath"
 	"testing"
 	"time"
 
 	"github.com/ihcsim/promdump/pkg/log"
 	"github.com/prometheus/prometheus/pkg/labels"
-	"github.com/prometheus/prometheus/tsdb"
 	promtsdb "github.com/prometheus/prometheus/tsdb"
 )
+
+var series []*promtsdb.MetricSample
 
 func TestBlocks(t *testing.T) {
 	logger := log.New("debug", ioutil.Discard)
@@ -21,100 +23,77 @@ func TestBlocks(t *testing.T) {
 	}
 	defer os.RemoveAll(tempDir)
 
-	series := []*tsdb.MetricSample{
-		{
-			TimestampMs: unix("2021-04-01 20:30:31 UTC", time.Millisecond, t),
-			Labels: []labels.Label{
-				{Name: "job", Value: "tsdb"},
-				{Name: "app", Value: "app-00"},
-			},
-		},
-		{
-			TimestampMs: unix("2021-04-01 20:00:31 UTC", time.Millisecond, t),
-			Labels: []labels.Label{
-				{Name: "job", Value: "tsdb"},
-				{Name: "app", Value: "app-01"},
-			},
-		},
-		{
-			TimestampMs: unix("2021-04-01 19:33:00 UTC", time.Millisecond, t),
-			Labels: []labels.Label{
-				{Name: "job", Value: "tsdb"},
-				{Name: "app", Value: "app-02"},
-			},
-		},
-		{
-			TimestampMs: unix("2021-03-30 01:06:47 UTC", time.Millisecond, t),
-			Labels: []labels.Label{
-				{Name: "job", Value: "tsdb"},
-				{Name: "app", Value: "app-00"},
-			},
-		},
-		{
-			TimestampMs: unix("2021-03-30 02:36:00 UTC", time.Millisecond, t),
-			Labels: []labels.Label{
-				{Name: "job", Value: "tsdb"},
-				{Name: "app", Value: "app-01"},
-			},
-		},
-		{
-			TimestampMs: unix("2021-03-30 03:01:48 UTC", time.Millisecond, t),
-			Labels: []labels.Label{
-				{Name: "job", Value: "tsdb"},
-				{Name: "app", Value: "app-02"},
-			},
-		},
+	// initialize head and persistent blocks in data directory
+	if err := initHeadBlock(tempDir); err != nil {
+		t.Fatal("unexpected error when creating head block: ", err)
+	}
+	blockOne, blockTwo, err := initPersistentBlocks(tempDir, logger, t)
+	if err != nil {
+		t.Fatal("unexpected error when creating persistent blocks: ", err)
 	}
 
-	tsdb := New(tempDir, logger)
-
-	blockOne, err := promtsdb.CreateBlock(series[:3], tempDir,
-		unix("2021-04-01 18:52:31 UTC", time.Millisecond, t),
-		unix("2021-04-01 20:52:31 UTC", time.Millisecond, t),
-		logger.Logger)
+	// initialize tsdb
+	tsdb, err := New(tempDir, logger)
 	if err != nil {
-		t.Fatalf("unexpected error: %s", err)
-	}
-
-	blockTwo, err := promtsdb.CreateBlock(series[3:], tempDir,
-		unix("2021-03-30 01:05:00 UTC", time.Millisecond, t),
-		unix("2021-03-30 03:05:00 UTC", time.Millisecond, t),
-		logger.Logger)
-	if err != nil {
-		t.Fatalf("unexpected error: %s", err)
+		t.Fatal("unexpected error: ", err)
 	}
 
 	t.Run("meta", func(t *testing.T) {
-		meta, err := tsdb.Meta()
+		headMeta, blockMeta, err := tsdb.Meta()
 		if err != nil {
 			t.Fatal("unexpected error: ", err)
 		}
 
-		expectedTotalSamples := len(series)
-		if actual := meta.TotalSamples; actual != uint64(expectedTotalSamples) {
-			t.Errorf("mismatch total samples. expected: %d, actual: %d", expectedTotalSamples, actual)
-		}
+		t.Run("head block", func(t *testing.T) {
+			expectedNumSeries := 18171 // value is read from static test file
+			if actual := headMeta.NumSeries; actual != uint64(expectedNumSeries) {
+				t.Errorf("mismatch total series. expected: %d, actual: %d", expectedNumSeries, actual)
+			}
 
-		expectedTotalSeries := len(series)
-		if actual := meta.TotalSeries; actual != uint64(expectedTotalSeries) {
-			t.Errorf("mismatch total series. expected: %d, actual: %d", expectedTotalSeries, actual)
-		}
+			expectedMaxTime, err := time.Parse(timeFormat, "2021-04-18 18:28:21.05 UTC")
+			if err != nil {
+				t.Fatal("unexpected error: ", err)
+			}
+			if actual := headMeta.MaxTime; actual != expectedMaxTime {
+				t.Errorf("mismatch max time. expected: %s, actual: %s", expectedMaxTime, actual)
+			}
 
-		expectedStartTime, err := time.Parse(timeFormat, "2021-03-30 01:05:00 UTC")
-		if err != nil {
-			t.Fatal("unexpected error: ", err)
-		}
-		if actual := meta.Start; !actual.Equal(expectedStartTime) {
-			t.Errorf("mismatch start time. expected: %s, actual: %s", expectedStartTime, actual)
-		}
+			expectedMinTime, err := time.Parse(timeFormat, "2021-04-18 13:00:05.939 UTC")
+			if err != nil {
+				t.Fatal("unexpected error: ", err)
+			}
+			if actual := headMeta.MinTime; actual != expectedMinTime {
+				t.Errorf("mismatch min time. expected: %s, actual: %s", expectedMinTime, actual)
+			}
+		})
 
-		expectedEndTime, err := time.Parse(timeFormat, "2021-04-01 20:52:31 UTC")
-		if err != nil {
-			t.Fatal("unexpected error: ", err)
-		}
-		if actual := meta.End; !actual.Equal(expectedEndTime) {
-			t.Errorf("mismatch end time. expected: %s, actual: %s", expectedEndTime, actual)
-		}
+		t.Run("persistent blocks", func(t *testing.T) {
+			expectedNumSamples := len(series)
+			if actual := blockMeta.NumSamples; actual != uint64(expectedNumSamples) {
+				t.Errorf("mismatch total samples. expected: %d, actual: %d", expectedNumSamples, actual)
+			}
+
+			expectedNumSeries := len(series)
+			if actual := blockMeta.NumSeries; actual != uint64(expectedNumSeries) {
+				t.Errorf("mismatch total series. expected: %d, actual: %d", expectedNumSeries, actual)
+			}
+
+			expectedMinTime, err := time.Parse(timeFormat, "2021-03-30 01:05:00 UTC")
+			if err != nil {
+				t.Fatal("unexpected error: ", err)
+			}
+			if actual := blockMeta.MinTime; !actual.Equal(expectedMinTime) {
+				t.Errorf("mismatch min time. expected: %s, actual: %s", expectedMinTime, actual)
+			}
+
+			expectedMaxTime, err := time.Parse(timeFormat, "2021-04-01 20:52:31 UTC")
+			if err != nil {
+				t.Fatal("unexpected error: ", err)
+			}
+			if actual := blockMeta.MaxTime; !actual.Equal(expectedMaxTime) {
+				t.Errorf("mismatch max time. expected: %s, actual: %s", expectedMaxTime, actual)
+			}
+		})
 	})
 
 	t.Run("blocks", func(t *testing.T) {
@@ -207,6 +186,106 @@ func TestBlocks(t *testing.T) {
 			})
 		}
 	})
+}
+
+func initHeadBlock(tempDir string) error {
+	// copy checkpoint test data to tempDir
+	walDir := filepath.Join(tempDir, "wal")
+	checkpointDir := filepath.Join(walDir, "checkpoint.00000036")
+	if err := os.MkdirAll(checkpointDir, 0755); err != nil {
+		return err
+	}
+
+	checkpointTestFile := filepath.Join("testdata", "wal", "checkpoint.00000036", "00000000")
+	checkpointTestdata, err := ioutil.ReadFile(checkpointTestFile)
+	if err != nil {
+		return err
+	}
+
+	checkpointFile := filepath.Join(checkpointDir, "00000037")
+	if err := ioutil.WriteFile(checkpointFile, checkpointTestdata, 0600); err != nil {
+		return err
+	}
+
+	// copy wal test data to tempDir
+	for _, testFile := range []string{"00000037", "00000038", "00000039"} {
+		wal, err := ioutil.ReadFile(filepath.Join("testdata", "wal", testFile))
+		if err != nil {
+			return err
+		}
+
+		walFile := filepath.Join(walDir, testFile)
+		if err := ioutil.WriteFile(walFile, wal, 0600); err != nil {
+			return err
+		}
+	}
+
+	return nil
+}
+
+func initPersistentBlocks(tempDir string, logger *log.Logger, t *testing.T) (string, string, error) {
+	series = []*promtsdb.MetricSample{
+		{
+			TimestampMs: unix("2021-04-01 20:30:31 UTC", time.Millisecond, t),
+			Labels: []labels.Label{
+				{Name: "job", Value: "tsdb"},
+				{Name: "app", Value: "app-00"},
+			},
+		},
+		{
+			TimestampMs: unix("2021-04-01 20:00:31 UTC", time.Millisecond, t),
+			Labels: []labels.Label{
+				{Name: "job", Value: "tsdb"},
+				{Name: "app", Value: "app-01"},
+			},
+		},
+		{
+			TimestampMs: unix("2021-04-01 19:33:00 UTC", time.Millisecond, t),
+			Labels: []labels.Label{
+				{Name: "job", Value: "tsdb"},
+				{Name: "app", Value: "app-02"},
+			},
+		},
+		{
+			TimestampMs: unix("2021-03-30 01:06:47 UTC", time.Millisecond, t),
+			Labels: []labels.Label{
+				{Name: "job", Value: "tsdb"},
+				{Name: "app", Value: "app-00"},
+			},
+		},
+		{
+			TimestampMs: unix("2021-03-30 02:36:00 UTC", time.Millisecond, t),
+			Labels: []labels.Label{
+				{Name: "job", Value: "tsdb"},
+				{Name: "app", Value: "app-01"},
+			},
+		},
+		{
+			TimestampMs: unix("2021-03-30 03:01:48 UTC", time.Millisecond, t),
+			Labels: []labels.Label{
+				{Name: "job", Value: "tsdb"},
+				{Name: "app", Value: "app-02"},
+			},
+		},
+	}
+
+	blockOne, err := promtsdb.CreateBlock(series[:3], tempDir,
+		unix("2021-04-01 18:52:31 UTC", time.Millisecond, t),
+		unix("2021-04-01 20:52:31 UTC", time.Millisecond, t),
+		logger.Logger)
+	if err != nil {
+		return "", "", err
+	}
+
+	blockTwo, err := promtsdb.CreateBlock(series[3:], tempDir,
+		unix("2021-03-30 01:05:00 UTC", time.Millisecond, t),
+		unix("2021-03-30 03:05:00 UTC", time.Millisecond, t),
+		logger.Logger)
+	if err != nil {
+		return "", "", err
+	}
+
+	return blockOne, blockTwo, err
 }
 
 const timeFormat = "2006-01-02 15:04:05 MST"

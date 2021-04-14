@@ -26,8 +26,8 @@ func (c *Clientset) ExecPod(command []string, stdin io.Reader, stdout, stderr io
 		pod            = c.config.GetString("pod")
 		container      = c.config.GetString("container")
 		requestTimeout = c.config.GetDuration("request-timeout")
-		startTime      = c.config.GetTime("start-time")
-		endTime        = c.config.GetTime("end-time")
+		minTime        = c.config.GetTime("min-time")
+		maxTime        = c.config.GetTime("max-time")
 	)
 
 	_ = level.Info(c.logger).Log("message", "sending exec request",
@@ -35,8 +35,8 @@ func (c *Clientset) ExecPod(command []string, stdin io.Reader, stdout, stderr io
 		"namespace", ns,
 		"pod", pod,
 		"container", container,
-		"start-time", startTime,
-		"end-time", endTime)
+		"min-time", minTime,
+		"max-time", maxTime)
 
 	execRequest := c.CoreV1().RESTClient().Post().
 		Resource("pods").
