@@ -27,8 +27,8 @@ const (
 
 var (
 	logger                *log.Logger
-	msgNoHeadBlocks       = "no head blocks found"
-	msgNoPersistentBlocks = "no persistent blocks found"
+	msgNoHeadBlock        = "No head block found"
+	msgNoPersistentBlocks = "No persistent blocks found"
 	targetDir             = os.TempDir()
 )
 
@@ -95,7 +95,8 @@ func main() {
 
 func writeMeta(headMeta *tsdb.HeadMeta, blockMeta *tsdb.BlockMeta) (int64, error) {
 	if headMeta.MinTime.IsZero() && headMeta.MaxTime.IsZero() {
-		return handleEmptyDataBlocks(msgNoHeadBlocks)
+		buf := bytes.NewBuffer([]byte(msgNoHeadBlock))
+		return buf.WriteTo(os.Stdout)
 	}
 
 	head := fmt.Sprintf(`Head Block Metadata
@@ -109,12 +110,11 @@ Number of series    | %d
 		headMeta.NumSeries)
 
 	buf := bytes.NewBuffer([]byte(head))
-
 	if blockMeta.MinTime.IsZero() && blockMeta.MaxTime.IsZero() {
-		if _, err := buf.WriteTo(os.Stdout); err != nil {
+		if _, err := buf.Write([]byte("\n" + msgNoPersistentBlocks)); err != nil {
 			return 0, err
 		}
-		return handleEmptyDataBlocks(msgNoPersistentBlocks)
+		return buf.WriteTo(os.Stdout)
 	}
 
 	blocks := fmt.Sprintf(`
@@ -143,7 +143,8 @@ Total size              | %d
 
 func writeBlocks(dataDir string, blocks []*promtsdb.Block, w io.Writer) (int64, error) {
 	if len(blocks) == 0 {
-		return handleEmptyDataBlocks(msgNoPersistentBlocks)
+		buf := bytes.NewBuffer([]byte(msgNoPersistentBlocks))
+		return buf.WriteTo(os.Stdout)
 	}
 
 	pipeReader, pipeWriter := io.Pipe()
@@ -258,11 +259,6 @@ func validateTimestamp(minTime, maxTime int64) error {
 	}
 
 	return nil
-}
-
-func handleEmptyDataBlocks(msg string) (int64, error) {
-	buf := bytes.NewBuffer([]byte(msg + "\n"))
-	return buf.WriteTo(os.Stderr)
 }
 
 func exit(err error) {
