@@ -54,37 +54,23 @@ var (
 func initRootCmd() (*cobra.Command, error) {
 	rootCmd := &cobra.Command{
 		Use:   `promdump -p POD --min-time "yyyy-mm-dd hh:mm:ss" --max-time "yyyy-mm-dd hh:mm:ss" [-n NAMESPACE] [-c CONTAINER] [-d DATA_DIR]`,
-		Short: "Captures a data dump containing Prometheus metric samples within a certain time range",
-		Example: `# captures a data dump of metric samples between
+		Short: "promdump dumps the head and persistent blocks of Prometheus",
+		Example: `# dumps the head block and persistent blocks between
 # 2021-01-01 00:00:00 and 2021-04-02 16:59:00, from the Prometheus <pod> in the
 # <ns> namespace.
 kubectl promdump -p <pod> -n <ns> --min-time "2021-01-01 00:00:00" --max-time "2021-04-02 16:59:00" > dump.tar.gz`,
-		Long: `promdump captures a data dump of Prometheus metric samples within a certain time
-range.
+		Long: `promdump dumps the head and persistent blocks of Prometheus. It supports
+filtering the persistent blocks by time range.
 
-It is different from 'promtool tsdb dump' in such a way that its output can be
-reused in another Prometheus instance. And unlike the Promethues TSDB snapshot
-API, promdump doesn't require Prometheus to be started with the
---web.enable-admin-api option. Instead of dumping the entire TSDB, promdump
-offers the flexibility to capture data that falls within a specific time range.
+promdump is a tool that can be used to dump Prometheus data blocks. It is
+different from the 'promtool tsdb dump' command in such a way that its output
+can be re-used in another Prometheus instance. And unlike the Promethues TSDB
+'snapshot' API, promdump doesn't require Prometheus to be started with the
+'--web.enable-admin-api' option. Instead of dumping the entire TSDB, promdump
+offers the flexibility to filter persistent blocks by time range.
 
-When run, the promdump CLI downloads the promdump tar.gz file from a public
-storage bucket to your local /tmp folder. The download will be skipped if such
-a file already exists. The -f option can be used to force a re-download.
-
-Then the CLI untar the archive file and upload the promdump binary to your
-in-cluster Prometheus container, via the pod's exec subresource.
-
-To create the data dump, promdump queries the Prometheus tsdb using the tsdb
-package[1]. Data blocks that fall within the specified time range are gathered
-and streamed to stdout, which can be redirected to a .tar.gz file on your local
-file system. The promdump binary will be automatically removed from your
-Prometheus container once the data dump is captured.
-
-The 'restore' subcommand can be used to copy this .tar.gz file to another
-Prometheus instance.
-
-[1] https://pkg.go.dev/github.com/prometheus/prometheus/tsdb
+For more information on how promdump works, see
+https://github.com/ihcsim/promdump.
 		`,
 		Version:       fmt.Sprintf("%s+%s", Version, Commit),
 		SilenceErrors: true, // let main() handles errors
@@ -136,7 +122,7 @@ Prometheus instance.
 	rootCmd.PersistentFlags().Bool("debug", defaultDebugEnabled, "run promdump in debug mode")
 	rootCmd.PersistentFlags().BoolP("force", "f", defaultForceDownload, "force the re-download of the promdump binary, which is saved to the local $TMP folder")
 	rootCmd.Flags().String("min-time", defaultMinTime.Format(timeFormat), "min time (UTC) of the samples (yyyy-mm-dd hh:mm:ss)")
-	rootCmd.Flags().String("max-time", defaultMaxTime.Format(timeFormat), "max time (UTC) of the samples (yyyy-mm-dd hh:mm:ss")
+	rootCmd.Flags().String("max-time", defaultMaxTime.Format(timeFormat), "max time (UTC) of the samples (yyyy-mm-dd hh:mm:ss)")
 
 	rootCmd.Flags().SortFlags = false
 	if err := rootCmd.MarkPersistentFlagRequired("pod"); err != nil {

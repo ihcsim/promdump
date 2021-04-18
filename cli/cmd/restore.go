@@ -14,7 +14,7 @@ import (
 func initRestoreCmd(rootCmd *cobra.Command) (*cobra.Command, error) {
 	restoreCmd := &cobra.Command{
 		Use:   "restore -p POD [-n NAMESPACE] [-c CONTAINER] [-d DATA_DIR]",
-		Short: "Restores samples dump to a Prometheus instance.",
+		Short: "Restores data dump to a Prometheus instance.",
 		Example: `# copy and restore the data dump in the dump.tar.gz file to the Prometheus
 # <pod> in namespace <ns>.
 kubectl promdump restore -p <pod> -n <ns> -t dump.tar.gz`,
