@@ -54,5 +54,14 @@ func runRestore(config *config.Config, clientset *k8s.Clientset) error {
 		return fmt.Errorf("can't read sample dump file: %w", err)
 	}
 
+	dataDir := config.GetString("data-dir")
+	execCmd := []string{"rm", "-rf",
+		fmt.Sprintf("%s/wal", dataDir),
+		fmt.Sprintf("%s/chunks_head", dataDir),
+	}
+	if err := clientset.ExecPod(execCmd, os.Stdin, os.Stdout, os.Stderr, false); err != nil {
+		return err
+	}
+
 	return uploadToContainer(bytes.NewBuffer(data), config, clientset)
 }
