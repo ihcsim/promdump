@@ -1,14 +1,14 @@
 # promdump
 
-promdump dumps the head and persistent blocks of Prometheus. Persistent blocks
-can be filtered by time range.
+promdump dumps the head and persistent blocks of Prometheus. It supports
+filtering the persistent blocks by time range.
 
 ## Why This Tool
 
-When debugging users' Kubernetes clusters with restrictive access, I often find
-it helpful to get access to their Prometheus metrics. To reduce the amount of
-back-and-forth with the users (due to missing metrics, incorrect labels etc.),
-it makes sense to ask the users to _"get me everything around the time of the
+When debugging Kubernetes clusters with restrictive access, I often find it
+helpful to get access to the in-cluster Prometheus metrics. To reduce the amount
+of back-and-forth with the users (due to missing metrics, incorrect labels etc.)
+, it makes sense to ask the users to _"get me everything around the time of the
 incident"_.
 
 The most common way to achieve this is to use commands like `kubectl exec` and
@@ -23,9 +23,8 @@ can be re-used in another Prometheus instance. See this
 [issue](https://github.com/prometheus/prometheus/issues/8281) for a discussion
 on the limitation on the output of `promtool tsdb dump`. And unlike the
 Promethues TSDB `snapshot` API, promdump doesn't require Prometheus to be
-started with the `--web.enable-admin-api` option. Instead of dumping the entir
-e TSDB, promdump offers the flexibility to filter persistent blocks by time
-range.
+started with the `--web.enable-admin-api` option. Instead of dumping the entire
+TSDB, promdump offers the flexibility to filter persistent blocks by time range.
 
 ## How It Works
 
@@ -34,23 +33,24 @@ The promdump CLI downloads the `promdump-$(VERSION).tar.gz` file from a
 to your local `/tmp` folder. The download will be skipped if such a file already
 exists. The `-f` option can be used to force a re-download.
 
-Then the CLI uploads the decompresses the promdump binary to the targeted
-Prometheus container, via the pod's `exec` subresource.
+Then the CLI uploads the decompressed promdump binary to the targeted Prometheus
+container, via the pod's `exec` subresource.
 
 Within the Prometheus container, promdump queries the Prometheus TSDB using the
 [`tsdb`](https://pkg.go.dev/github.com/prometheus/prometheus/tsdb) package. It
-reads and streams the WAL files, head block and persistent blocks to stdout. To
-regulate the size of the dump, persistent blocks can be filtered by time range.
+reads and streams the WAL files, head block and persistent blocks to stdout,
+which can be redirected to a file on your local file system. To regulate the
+size of the dump, persistent blocks can be filtered by time range.
 
-⭐ promdump performs read-only operations on the TSDB.
+⭐ _promdump performs read-only operations on the TSDB._
 
 When the data dump is completed, the promdump binary will be automatically
 deleted from your Prometheus container.
 
-The `restore` subcommand can then be used to copy this compressed file to
-another Prometheus container. When this container is restarted, it will
-reconstruct its in-memory index and chunks using the restored on-disk
-memory-mapped chunks and WAL.
+The `restore` subcommand can then be used to copy this dump file to another
+Prometheus container. When this container is restarted, it will reconstruct its
+in-memory index and chunks using the restored on-disk memory-mapped chunks and
+WAL.
 
 The `--debug` option can be used to output more verbose logs for each command.
 
@@ -61,114 +61,152 @@ Install promdump as a `kubectl` plugin:
 
 ```
 
-The promdump CLI can also be downloaded from the Release page.
-
 For demonstration purposes, use [kind](https://kind.sigs.k8s.io/) to create two
 K8s clusters:
 ```sh
-$ kind create cluster --name dev-00
-
-$ kind create cluster --name dev-01
+for i in {0..1}; do \
+  kind create cluster --name dev-0$i ;\
+done
 ```
 
 Install Prometheus on both clusters using the community
 [Helm chart](https://github.com/prometheus-community/helm-charts/tree/main/charts/prometheus):
 ```sh
-helm --kube-context=kind-dev-00 install prometheus prometheus-community/prometheus
-
-helm --kube-context=kind-dev-01 install prometheus prometheus-community/prometheus
+for i in {0..1}; do \
+  helm --kube-context=kind-dev-0$i install prometheus prometheus-community/prometheus ;\
+done
 ```
 
-Deploy a custom controller to cluster `dev-00`. This controller is annotated to
-be scraped by Prometheus:
+Deploy a custom controller to cluster `dev-00`. This controller is annotated for
+metrics scraping:
 ```sh
 kubectl --context=kind-dev-00 apply -f https://raw.githubusercontent.com/ihcsim/controllers/master/podlister/deployment.yaml
 ```
 
 Port-forward to the Prometheus pod to find the custom `demo_http_requests_total`
-metric. Later, we will use promdump to copy the samples of this metric over to
-the `dev-01` cluster:
+metric.
+
+📝 _Later, we will use promdump to copy the samples of this metric over to the
+`dev-01` cluster._
+
 ```sh
 CONTEXT="kind-dev-00"
 POD_NAME=$(kubectl --context "${CONTEXT}" get pods --namespace default -l "app=prometheus,component=server" -o jsonpath="{.items[0].metadata.name}")
 kubectl --context="${CONTEXT}" port-forward "${POD_NAME}" 9090
 ```
 
-![Demo controller metrics](img/demo-controller-metrics.png)
+![Demo controller metrics](img/demo_http_requests_total_dev_00.png)
+
+📝 The `-c` and `-d` options can be used to change the container name and
+data directoy.
 
 Dump the data from the first cluster:
 ```sh
-CONTAINER_NAME="prometheus-server"
-DATA_DIR="/data"
-
 # check the tsdb metadata
-kubectl promdump meta \
-  --context "${CONTEXT}" \
-  -p "${POD_NAME}" \
-  -c "${CONTAINER_NAME}" \
-  -d "${DATA_DIR}"
-Earliest time:          | 2021-03-28 18:29:37
-Latest time:            | 2021-04-07 20:00:00
-Total number of blocks  | 17
-Total number of samples | 459813486
-Total number of series  | 186483
-Total size              | 388639976
+kubectl promdump meta --context=$CONTEXT -p $POD_NAME
+Head Block Metadata
+------------------------
+Minimum time (UTC): | 2021-04-18 18:00:03
+Maximum time (UTC): | 2021-04-18 20:34:48
+Number of series    | 18453
+
+Persistent Blocks Metadata
+----------------------------
+Minimum time (UTC):     | 2021-04-15 03:19:10
+Maximum time (UTC):     | 2021-04-18 18:00:00
+Total number of blocks  | 9
+Total number of samples | 92561234
+Total number of series  | 181304
+Total size              | 139272005
 
 # capture the data dump
 TARFILE="dump-`date +%s`.tar.gz"
 kubectl promdump \
   --context "${CONTEXT}" \
   -p "${POD_NAME}" \
-  -c "${CONTAINER_NAME}" \
-  -d "${DATA_DIR}" \
-  --start-time "2021-04-01 00:00:00" \
-  --end-time "2021-04-07 16:02:00"  > "${TARFILE}"
+  --min-time "2021-04-15 03:19:10" \
+  --max-time "2021-04-18 20:34:48"  > "${TARFILE}"
 
-# view the content of the tar file
-$ tar -tf "target/testdata/${TARFILE}"
+# view the content of the tar file. expect to see the 'chunk_heads', 'wal' and
+# persistent blocks directories.
+$ tar -tf "${TARFILE}"
 ```
 
-Restore the data dump to the Prometheus pod on the `dev-01` cluster:
+Restore the data dump to the Prometheus pod on the `dev-01` cluster, where we
+don't have the custom controller:
 ```sh
 CONTEXT="kind-dev-01"
 POD_NAME=$(kubectl --context "${CONTEXT}" get pods --namespace default -l "app=prometheus,component=server" -o jsonpath="{.items[0].metadata.name}")
-CONTAINER_NAME="prometheus-server"
-DATA_DIR="/data"
 
 # check the tsdb metadata
-kubectl promdump meta \
-  --context "${CONTEXT}" \
-  -p "${POD_NAME}" \
-  -c "${CONTAINER_NAME}" \
-  -d "${DATA_DIR}"
+kubectl promdump meta --context "${CONTEXT}" -p "${POD_NAME}"
+Head Block Metadata
+------------------------
+Minimum time (UTC): | 2021-04-18 20:39:21
+Maximum time (UTC): | 2021-04-18 20:47:30
+Number of series    | 20390
+
+No persistent blocks found
 
 # restore the data dump found at ${TARFILE}
 kubectl promdump restore \
   --context="${CONTEXT}" \
   -p "${POD_NAME}" \
-  -c "${CONTAINER_NAME}" \
-  -d "${DATA_DIR}" \
   -t "${TARFILE}"
 
-kubectl --context="${CONTEXT}" exec "${POD_NAME}" -c "${CONTAINER_NAME}" -- ls -al "${DATA_DIR}"
+# check the metadata again. it should match that of the dev-00 cluster
+kubectl promdump meta --context "${CONTEXT}" -p "${POD_NAME}"
+Head Block Metadata
+------------------------
+Minimum time (UTC): | 2021-04-18 18:00:03
+Maximum time (UTC): | 2021-04-18 20:35:48
+Number of series    | 18453
+
+Persistent Blocks Metadata
+----------------------------
+Minimum time (UTC):     | 2021-04-15 03:19:10
+Maximum time (UTC):     | 2021-04-18 18:00:00
+Total number of blocks  | 9
+Total number of samples | 92561234
+Total number of series  | 181304
+Total size              | 139272005
+
+# confirm that the WAL, head and persistent blocks are copied to the targeted
+# Prometheus server
+kubectl --context="${CONTEXT}" exec "${POD_NAME}" -c prometheus-server -- ls -al /data
 ```
 
-Port-forward to the Prometheus pod and confirm that the samples of the
-`demo_http_requests_total` metric have been copied over:
+Restart the Prometheus pod:
 ```sh
-kubectl --context=${CONTEXT} port-forward ${POD_NAME} 9091:9090
+kubectl --context="${CONTEXT}" delete po "${POD_NAME}"
 ```
+
+Port-forward to the pod to confirm that the samples of
+the `demo_http_requests_total` metric have been copied over:
+```sh
+kubectl --context="${CONTEXT}" port-forward "${POD_NAME}" 9091:9090
+```
+
+Make sure that time frame of your query matches that of the restored data.
+
+![Restored metrics](img/demo_http_requests_total_dev_01.png)
 
 ## Limitations
 
 promdump is still in its experimental phase. It is used mainly to help with
-debugging issues. It's not suitable for production backup/restore operation.
+debugging issues, where data blocks are copied from one Prometheus instance to
+another development instance. Before restoring the data dump, promdump will
+delete the `wal` and `chunks_head` folders of the targeted Prometheus instance,
+to avoid the following conflicting segment error:
+
+```sh
+opening storage failed: get segment range: segments are not sequential
+```
+
+It's not suitable for production backup/restore operation.
 
 Like `kubectl cp`, promdump requires the `tar` binary in the Prometheus
 container.
-
-Currently, promdump only retrieves samples persisted in the on-disk blocks. It
-doesn't account for in-memory chunk data and content in the WAL file.
 
 ## License
 
