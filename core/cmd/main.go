@@ -34,7 +34,7 @@ var (
 
 func main() {
 	var (
-		defaultMaxTime = time.Now()
+		defaultMaxTime = time.Now().UTC()
 		defaultMinTime = defaultMaxTime.Add(-2 * time.Hour)
 
 		dataDir  = flag.String("data-dir", "/data", "path to the Prometheus data directory")
