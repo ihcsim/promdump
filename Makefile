@@ -45,7 +45,7 @@ core:
 
 .PHONY: cli
 cli:
-	if [ $(BUILD_OS) == "windows" ]; then \
+	if [ "$(BUILD_OS)" = "windows" ]; then \
 		extension=".exe" ;\
 	fi ;\
 	CGO_ENABLED=0 GOOS="$(BUILD_OS)" GOARCH="$(BUILD_ARCH)" go build -ldflags="-X 'main.Version=$(VERSION)' -X 'main.Commit=$(GIT_COMMIT)'" -o "$(TARGET_BIN_DIR)/cli-$(BUILD_OS)-$(BUILD_ARCH)-$(VERSION)$${extension}" ./cli/cmd ;\
@@ -64,20 +64,16 @@ dist:
 release:
 	rm -rf "$(TARGET_RELEASE_DIR)" ;\
 	mkdir -p "$(TARGET_RELEASE_DIR)" ;\
-	arch=( amd64 );\
-	goos=( linux darwin windows ) ;\
-	for arch in "$${arch[@]}" ; do \
-		for os in "$${goos[@]}" ; do \
-			$(MAKE) BUILD_OS="$${os}" BUILD_ARCH="$${arch}" TARGET_BIN_DIR=$(TARGET_RELEASE_DIR) cli;\
-			$(MAKE) BUILD_OS="$${os}" BUILD_ARCH="$${arch}" plugin ;\
-		done ;\
+	for os in linux darwin windows ; do \
+		$(MAKE) BUILD_OS="$${os}" BUILD_ARCH="amd64" TARGET_BIN_DIR=$(TARGET_RELEASE_DIR) cli;\
+		$(MAKE) BUILD_OS="$${os}" BUILD_ARCH="amd64" plugin ;\
 	done ;\
 	$(MAKE) TARGET_BIN_DIR=$(TARGET_RELEASE_DIR) core dist ;\
 
 .PHONY: plugin
 plugin:
 	mkdir -p "$(TARGET_PLUGINS_DIR)" ;\
-	if [ $(BUILD_OS) == "windows" ]; then \
+	if [ "$(BUILD_OS)" = "windows" ]; then \
 		extension=".exe" ;\
 	fi ;\
 	cp "$(TARGET_RELEASE_DIR)/cli-$(BUILD_OS)-$(BUILD_ARCH)-$(VERSION)$${extension}" "$(TARGET_PLUGINS_DIR)/kubectl-promdump$${extension}" ;\

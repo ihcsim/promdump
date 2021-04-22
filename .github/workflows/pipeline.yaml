@@ -1,0 +1,49 @@
+on:
+  push:
+    branches:
+    - main
+    tags:
+    - v*
+jobs:
+  lint:
+    runs-on: ubuntu-18.04
+    steps:
+    - name: checkout code
+      uses: actions/checkout@v2
+    - name: run linter
+      run: |
+        curl -sSfL https://raw.githubusercontent.com/golangci/golangci-lint/master/install.sh | sh -s -- -b ./ v1.31.0
+        make lint PATH=$PATH:`pwd`
+  build:
+    runs-on: ubuntu-18.04
+    steps:
+    - name: install Go
+      uses: actions/setup-go@v2
+      with:
+        go-version: 1.16.3
+    - name: checkout code
+      uses: actions/checkout@v2
+    - name: test
+      run: |
+        make test
+    - name: build
+      run: |
+        version=$(echo "${{ github.ref }}" | awk -F'/' '{print $3}')
+        make build VERSION="${version}"
+  release:
+    if: startsWith(github.ref, 'refs/tags')
+    runs-on: ubuntu-18.04
+    env:
+      AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}
+      AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+      AWS_DEFAULT_REGION: ${{ secrets.AWS_DEFAULT_REGION }}
+    steps:
+    - name: install Go
+      uses: actions/setup-go@v2
+      with:
+        go-version: 1.16.3
+    - name: checkout code
+      uses: actions/checkout@v2
+    - run: |
+        version=$(echo "${{ github.ref }}" | awk -F'/' '{print $3}')
+        make release VERSION="${version}"
