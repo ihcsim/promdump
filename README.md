@@ -1,5 +1,7 @@
 # promdump
 
+![pipeline](https://github.com/ihcsim/promdump/actions/workflows/pipeline.yaml/badge.svg)
+
 promdump dumps the head and persistent blocks of Prometheus. It supports
 filtering the persistent blocks by time range.
 
