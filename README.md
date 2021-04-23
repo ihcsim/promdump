@@ -98,8 +98,8 @@ kubectl --context="${CONTEXT}" port-forward "${POD_NAME}" 9090
 
 ![Demo controller metrics](img/demo_http_requests_total_dev_00.png)
 
-📝 The `-c` and `-d` options can be used to change the container name and
-data directoy.
+📝 _In subsequent commands, the `-c` and `-d` options can be used to change
+the container name and data directoy._
 
 Dump the data from the first cluster:
 ```sh
@@ -196,6 +196,7 @@ Make sure that time frame of your query matches that of the restored data.
 
 Q: I am not seeing the restored data
 A: There are a few things you can check:
+
 * When generating the dump, make sure the start and end date times are
 specified in the UTC time zone.
 * If using the Prometheus console, make sure the time filter falls within the
