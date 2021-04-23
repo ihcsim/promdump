@@ -205,9 +205,12 @@ using the `kubectl promdump meta` subcommand.
 target Prometheus with the source Prometheus to see if they match, using the
 `meta` subcommand. The head block metadata may deviate slightly depending on how
 old your data dump is.
-*  Use commands like `kubectl exec` to run command likes `ls -al <data_dir>`
+* Use commands like `kubectl exec` to run command likes `ls -al <data_dir>`
 and `cat <data_dir>/<data_block>/meta.json` to confirm the data range of a
 particular data block.
+* Try restart the Prometheus pod after the restoration completed to give
+Prometheus a chance to replay the restored WALs. The restored data must be
+persisted to survive a restart.
 * Check Prometheus logs to see if there are any errors due to corrupted data
 blocks.
 * Run the `restore` subcommand with the `--debug` flag to see if that provides
