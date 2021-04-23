@@ -191,6 +191,27 @@ Make sure that time frame of your query matches that of the restored data.
 
 ![Restored metrics](img/demo_http_requests_total_dev_01.png)
 
+## FAQ
+
+Q: I am not seeing the restored data
+A: There are a few things you can check:
+* When generating the dump, make sure the start and end date times are
+specified in the UTC time zone.
+* If using the Prometheus console, make sure the time filter falls within the
+time range of your data dump. You can confirm your restored data time range
+using the `kubectl promdump meta` subcommand.
+* To see if the restore completed successfully, compare the TSDB metadata of the
+target Prometheus with the source Prometheus to see if they match, using the
+`meta` subcommand. The head block metadata may deviate slightly depending on how
+old your data dump is.
+*  Use commands like `kubectl exec` to run command likes `ls -al <data_dir>`
+and `cat <data_dir>/<data_block>/meta.json` to confirm the data range of a
+particular data block.
+* Check Prometheus logs to see if there are any errors due to corrupted data
+blocks.
+* Run the `restore` subcommand with the `--debug` flag to see if that provides
+more information.
+
 ## Limitations
 
 promdump is still in its experimental phase. It is used mainly to help with
