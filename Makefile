@@ -65,10 +65,10 @@ release:
 	rm -rf "$(TARGET_RELEASE_DIR)" ;\
 	mkdir -p "$(TARGET_RELEASE_DIR)" ;\
 	for os in linux darwin windows ; do \
-		$(MAKE) BUILD_OS="$${os}" BUILD_ARCH="amd64" TARGET_BIN_DIR=$(TARGET_RELEASE_DIR) cli;\
+		$(MAKE) BUILD_OS="$${os}" BUILD_ARCH="amd64" TARGET_BIN_DIR="$(TARGET_RELEASE_DIR)" cli;\
 		$(MAKE) BUILD_OS="$${os}" BUILD_ARCH="amd64" plugin ;\
 	done ;\
-	$(MAKE) TARGET_BIN_DIR=$(TARGET_RELEASE_DIR) core dist ;\
+	$(MAKE) TARGET_BIN_DIR="$(TARGET_RELEASE_DIR)" core dist ;\
 
 .PHONY: plugin
 plugin:
@@ -76,8 +76,9 @@ plugin:
 	if [ "$(BUILD_OS)" = "windows" ]; then \
 		extension=".exe" ;\
 	fi ;\
+	cp LICENSE "$(TARGET_RELEASE_DIR)"
 	cp "$(TARGET_RELEASE_DIR)/cli-$(BUILD_OS)-$(BUILD_ARCH)-$(VERSION)$${extension}" "$(TARGET_PLUGINS_DIR)/kubectl-promdump$${extension}" ;\
-	tar -C "$(TARGET_PLUGINS_DIR)" -czvf "$(TARGET_PLUGINS_DIR)/kubectl-promdump-$(BUILD_OS)-$(BUILD_ARCH)-$(VERSION).tar.gz" kubectl-promdump$${extension} ;\
+	tar -C "$(TARGET_PLUGINS_DIR)" -czvf "$(TARGET_PLUGINS_DIR)/kubectl-promdump-$(BUILD_OS)-$(BUILD_ARCH)-$(VERSION).tar.gz" kubectl-promdump$${extension} LICENSE ;\
 	rm "$(TARGET_PLUGINS_DIR)/kubectl-promdump$${extension}" ;\
 	shasum -a256 $(TARGET_PLUGINS_DIR)/kubectl-promdump-$(BUILD_OS)-$(BUILD_ARCH)-$(VERSION).tar.gz | awk '{print $$1}' > $(TARGET_PLUGINS_DIR)/kubectl-promdump-$(BUILD_OS)-$(BUILD_ARCH)-$(VERSION).tar.gz.sha256 ;\
 

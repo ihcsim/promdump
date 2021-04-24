@@ -16,6 +16,8 @@ jobs:
         make lint PATH=$PATH:`pwd`
   build:
     runs-on: ubuntu-18.04
+    outputs:
+      version: ${{ steps.build.outputs.version }}
     steps:
     - name: install Go
       uses: actions/setup-go@v2
@@ -27,11 +29,16 @@ jobs:
       run: |
         make test
     - name: build
+      id: build
       run: |
         version=$(echo "${{ github.ref }}" | awk -F'/' '{print $3}')
         make build VERSION="${version}"
+        echo "::set-output name=version::${version}"
   release:
-    if: startsWith(github.ref, 'refs/tags')
+    if: ${{ startsWith(github.ref, 'refs/tags') }}
+    needs:
+    - lint
+    - build
     runs-on: ubuntu-18.04
     env:
       AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}
@@ -44,6 +51,21 @@ jobs:
         go-version: 1.16.3
     - name: checkout code
       uses: actions/checkout@v2
-    - run: |
-        version=$(echo "${{ github.ref }}" | awk -F'/' '{print $3}')
-        make release VERSION="${version}"
+    - name: release
+      run: |
+        make release VERSION=${{ needs.build.outputs.version }}
+    - name: publish
+      if: ${{ success() }}
+      uses: softprops/action-gh-release@v1
+      env:
+        GITHUB_TOKEN: ${{ github.token }}
+      with:
+        files: |
+          target/releases/${{ needs.build.outputs.version }}/plugins/kubectl-promdump-darwin-amd64-${{ needs.build.outputs.version }}.tar.gz
+          target/releases/${{ needs.build.outputs.version }}/plugins/kubectl-promdump-darwin-amd64-${{ needs.build.outputs.version }}.tar.gz.sha256
+          target/releases/${{ needs.build.outputs.version }}/plugins/kubectl-promdump-linux-amd64-${{ needs.build.outputs.version }}.tar.gz
+          target/releases/${{ needs.build.outputs.version }}/plugins/kubectl-promdump-linux-amd64-${{ needs.build.outputs.version }}.tar.gz.sha256
+          target/releases/${{ needs.build.outputs.version }}/plugins/kubectl-promdump-windows-amd64-${{ needs.build.outputs.version }}.tar.gz
+          target/releases/${{ needs.build.outputs.version }}/plugins/kubectl-promdump-windows-amd64-${{ needs.build.outputs.version }}.tar.gz.sha256
+          target/releases/${{ needs.build.outputs.version }}/promdump
+          target/releases/${{ needs.build.outputs.version }}/promdump.sha256
