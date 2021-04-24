@@ -76,7 +76,7 @@ plugin:
 	if [ "$(BUILD_OS)" = "windows" ]; then \
 		extension=".exe" ;\
 	fi ;\
-	cp LICENSE "$(TARGET_RELEASE_DIR)"
+	cp LICENSE "$(TARGET_PLUGINS_DIR)"
 	cp "$(TARGET_RELEASE_DIR)/cli-$(BUILD_OS)-$(BUILD_ARCH)-$(VERSION)$${extension}" "$(TARGET_PLUGINS_DIR)/kubectl-promdump$${extension}" ;\
 	tar -C "$(TARGET_PLUGINS_DIR)" -czvf "$(TARGET_PLUGINS_DIR)/kubectl-promdump-$(BUILD_OS)-$(BUILD_ARCH)-$(VERSION).tar.gz" kubectl-promdump$${extension} LICENSE ;\
 	rm "$(TARGET_PLUGINS_DIR)/kubectl-promdump$${extension}" ;\
