@@ -1,0 +1,49 @@
+apiVersion: krew.googlecontainertools.github.com/v1alpha2
+kind: Plugin
+metadata:
+  name: promdump
+spec:
+  version: v0.2.0
+  homepage: https://github.com/ihcsim/promdump
+  shortDescription: promdump dumps the head and persistent blocks of Prometheus.
+  description: |
+    promdump dumps the head and persistent blocks of Prometheus. It supports
+    filtering the persistent blocks by time range.
+
+    promdump is a tool that can be used to dump Prometheus data blocks. It is
+    different from the 'promtool tsdb dump' command in such a way that its output
+    can be re-used in another Prometheus instance. And unlike the Promethues TSDB
+    'snapshot' API, promdump doesn't require Prometheus to be started with the
+    '--web.enable-admin-api' option. Instead of dumping the entire TSDB, promdump
+    offers the flexibility to filter persistent blocks by time range.
+  platforms:
+  - selector:
+      matchLabels:
+        os: darwin
+        arch: amd64
+    uri: https://github.com/ihcsim/promdump/releases/download/v0.2.0/kubectl-promdump-darwin-amd64-v0.2.0.tar.gz
+    sha256: 41e021b5b5662b4a3fe93b478a012c42b07f383a71a311689fd53bca3285ce0a
+    bin: kubectl-promdump
+    files:
+    - from: "*"
+      to: .
+  - selector:
+      matchLabels:
+        os: linux
+        arch: amd64
+    uri: https://github.com/ihcsim/promdump/releases/download/v0.2.0/kubectl-promdump-linux-amd64-v0.2.0.tar.gz
+    sha256: 516faacbf3e68508d50b2a10bd695d52d965d7e7d0aab63e57a807c6d6f8de87
+    bin: kubectl-promdump
+    files:
+    - from: "*"
+      to: .
+  - selector:
+      matchLabels:
+        os: windows
+        arch: amd64
+    uri: https://github.com/ihcsim/promdump/releases/download/v0.2.0/kubectl-promdump-windows-amd64-v0.2.0.tar.gz
+    sha256: 471bb985a0f3de77283f6679b1d6372d01edb0eaf7168435a6efc4562f1bb660
+    bin: kubectl-promdump.exe
+    files:
+    - from: "*"
+      to: .
