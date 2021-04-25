@@ -47,9 +47,9 @@ core:
 cli:
 	if [ "$(BUILD_OS)" = "windows" ]; then \
 		extension=".exe" ;\
-	fi ;\
-	CGO_ENABLED=0 GOOS="$(BUILD_OS)" GOARCH="$(BUILD_ARCH)" go build -ldflags="-X 'main.Version=$(VERSION)' -X 'main.Commit=$(GIT_COMMIT)'" -o "$(TARGET_BIN_DIR)/cli-$(BUILD_OS)-$(BUILD_ARCH)-$(VERSION)$${extension}" ./cli/cmd ;\
-	shasum -a256 "$(TARGET_BIN_DIR)/cli-$(BUILD_OS)-$(BUILD_ARCH)-$(VERSION)"  | awk '{print $$1}' > "$(TARGET_BIN_DIR)/cli-$(BUILD_OS)-$(BUILD_ARCH)-$(VERSION).sha256"
+	fi && \
+	CGO_ENABLED=0 GOOS="$(BUILD_OS)" GOARCH="$(BUILD_ARCH)" go build -ldflags="-X 'main.Version=$(VERSION)' -X 'main.Commit=$(GIT_COMMIT)'" -o "$(TARGET_BIN_DIR)/cli-$(BUILD_OS)-$(BUILD_ARCH)-$(VERSION)$${extension}" ./cli/cmd &&\
+	shasum -a256 "$(TARGET_BIN_DIR)/cli-$(BUILD_OS)-$(BUILD_ARCH)-$(VERSION)"$${extension}  | awk '{print $$1}' > "$(TARGET_BIN_DIR)/cli-$(BUILD_OS)-$(BUILD_ARCH)-$(VERSION).sha256"
 
 .PHONY: dist
 dist:
@@ -62,25 +62,25 @@ dist:
 
 .PHONY: release
 release:
-	rm -rf "$(TARGET_RELEASE_DIR)" ;\
-	mkdir -p "$(TARGET_RELEASE_DIR)" ;\
+	rm -rf "$(TARGET_RELEASE_DIR)" && \
+	mkdir -p "$(TARGET_RELEASE_DIR)" && \
 	for os in linux darwin windows ; do \
-		$(MAKE) BUILD_OS="$${os}" BUILD_ARCH="amd64" TARGET_BIN_DIR="$(TARGET_RELEASE_DIR)" cli;\
+		$(MAKE) BUILD_OS="$${os}" BUILD_ARCH="amd64" TARGET_BIN_DIR="$(TARGET_RELEASE_DIR)" cli && \
 		$(MAKE) BUILD_OS="$${os}" BUILD_ARCH="amd64" plugin ;\
-	done ;\
-	$(MAKE) TARGET_BIN_DIR="$(TARGET_RELEASE_DIR)" core dist ;\
+	done && \
+	$(MAKE) TARGET_BIN_DIR="$(TARGET_RELEASE_DIR)" core dist
 
 .PHONY: plugin
 plugin:
-	mkdir -p "$(TARGET_PLUGINS_DIR)" ;\
+	mkdir -p "$(TARGET_PLUGINS_DIR)" && \
 	if [ "$(BUILD_OS)" = "windows" ]; then \
 		extension=".exe" ;\
-	fi ;\
-	cp LICENSE "$(TARGET_PLUGINS_DIR)"
-	cp "$(TARGET_RELEASE_DIR)/cli-$(BUILD_OS)-$(BUILD_ARCH)-$(VERSION)$${extension}" "$(TARGET_PLUGINS_DIR)/kubectl-promdump$${extension}" ;\
-	tar -C "$(TARGET_PLUGINS_DIR)" -czvf "$(TARGET_PLUGINS_DIR)/kubectl-promdump-$(BUILD_OS)-$(BUILD_ARCH)-$(VERSION).tar.gz" kubectl-promdump$${extension} LICENSE ;\
-	rm "$(TARGET_PLUGINS_DIR)/kubectl-promdump$${extension}" ;\
-	shasum -a256 $(TARGET_PLUGINS_DIR)/kubectl-promdump-$(BUILD_OS)-$(BUILD_ARCH)-$(VERSION).tar.gz | awk '{print $$1}' > $(TARGET_PLUGINS_DIR)/kubectl-promdump-$(BUILD_OS)-$(BUILD_ARCH)-$(VERSION).tar.gz.sha256 ;\
+	fi && \
+	cp LICENSE "$(TARGET_PLUGINS_DIR)" && \
+	cp "$(TARGET_RELEASE_DIR)/cli-$(BUILD_OS)-$(BUILD_ARCH)-$(VERSION)$${extension}" "$(TARGET_PLUGINS_DIR)/kubectl-promdump$${extension}" && \
+	tar -C "$(TARGET_PLUGINS_DIR)" -czvf "$(TARGET_PLUGINS_DIR)/kubectl-promdump-$(BUILD_OS)-$(BUILD_ARCH)-$(VERSION).tar.gz" kubectl-promdump$${extension} LICENSE && \
+	rm "$(TARGET_PLUGINS_DIR)/kubectl-promdump$${extension}" && \
+	shasum -a256 $(TARGET_PLUGINS_DIR)/kubectl-promdump-$(BUILD_OS)-$(BUILD_ARCH)-$(VERSION).tar.gz | awk '{print $$1}' > $(TARGET_PLUGINS_DIR)/kubectl-promdump-$(BUILD_OS)-$(BUILD_ARCH)-$(VERSION).tar.gz.sha256
 
 .PHONY: test
 test/prometheus-repos:
