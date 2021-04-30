@@ -224,8 +224,8 @@ more information.
 promdump is still in its experimental phase. It is used mainly to help with
 debugging issues, where data blocks are copied from one Prometheus instance to
 another development instance. Before restoring the data dump, promdump will
-delete the `wal` and `chunks_head` folders of the targeted Prometheus instance,
-to avoid the following conflicting segment error:
+delete the content of the data folder in the targeted Prometheus instance, to
+avoid corrupting the data blocks due to conflicting segment error such as:
 
 ```sh
 opening storage failed: get segment range: segments are not sequential
