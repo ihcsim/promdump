@@ -82,18 +82,20 @@ plugin:
 	rm "$(TARGET_PLUGINS_DIR)/kubectl-promdump$${extension}" && \
 	shasum -a256 $(TARGET_PLUGINS_DIR)/kubectl-promdump-$(BUILD_OS)-$(BUILD_ARCH)-$(VERSION).tar.gz | awk '{print $$1}' > $(TARGET_PLUGINS_DIR)/kubectl-promdump-$(BUILD_OS)-$(BUILD_ARCH)-$(VERSION).tar.gz.sha256
 
-.PHONY: test
-test/prometheus-repos:
+.PHONY: hack/prometheus-repos
+hack/prometheus-repos:
 	helm repo add prometheus-community https://prometheus-community.github.io/helm-charts
 	helm repo add kube-state-metrics https://kubernetes.github.io/kube-state-metrics
 	helm repo update
 
-test/prometheus:
+.PHONY: hack/prometheus
+hack/prometheus:
 	helm install prometheus prometheus-community/prometheus
 
 HACK_NAMESPACE ?= default
 HACK_DATA_DIR ?= /data
-.PHONY: hack
+
+.PHONY: hack/deploy
 hack/deploy:
 	pod="$$(kubectl get pods --namespace $(HACK_NAMESPACE) -l "app=prometheus,component=server" -o jsonpath="{.items[0].metadata.name}")" ;\
 	kubectl -n "$(HACK_NAMESPACE)" cp -c prometheus-server "$(TARGET_BIN_DIR)/promdump" "$${pod}:$(HACK_DATA_DIR)" ;\

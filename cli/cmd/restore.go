@@ -55,10 +55,7 @@ func runRestore(config *config.Config, clientset *k8s.Clientset) error {
 	}
 
 	dataDir := config.GetString("data-dir")
-	execCmd := []string{"rm", "-rf",
-		fmt.Sprintf("%s/wal", dataDir),
-		fmt.Sprintf("%s/chunks_head", dataDir),
-	}
+	execCmd := []string{"sh", "-c", fmt.Sprintf("rm -rf %s/*", dataDir)}
 	if err := clientset.ExecPod(execCmd, os.Stdin, os.Stdout, os.Stderr, false); err != nil {
 		return err
 	}
