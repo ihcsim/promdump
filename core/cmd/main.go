@@ -164,27 +164,11 @@ func compressed(dataDir string, blocks []*promtsdb.Block, writer *io.PipeWriter)
 	var (
 		buf = &bytes.Buffer{}
 		tw  = tar.NewWriter(buf)
-
-		dirChunksHead = filepath.Join(dataDir, "chunks_head")
-		dirWAL        = filepath.Join(dataDir, "wal")
 	)
 
-	writeHeader := func(path string, info os.FileInfo, typeFlag byte) error {
-		name := path[len(dataDir)+1:]
-		header := &tar.Header{
-			Name:     name,
-			Mode:     int64(info.Mode()),
-			ModTime:  info.ModTime(),
-			Size:     info.Size(),
-			Typeflag: typeFlag,
-		}
-
-		return tw.WriteHeader(header)
-	}
-
 	dirs := []string{
-		dirChunksHead,
-		dirWAL,
+		filepath.Join(dataDir, "chunks_head"),
+		filepath.Join(dataDir, "wal"),
 	}
 	for _, block := range blocks {
 		dirs = append(dirs, block.Dir())
@@ -197,7 +181,20 @@ func compressed(dataDir string, blocks []*promtsdb.Block, writer *io.PipeWriter)
 				return err
 			}
 
-			if err := writeHeader(path, info, tar.TypeReg); err != nil {
+			var link string
+			if info.Mode()&os.ModeSymlink == os.ModeSymlink {
+				if link, err = os.Readlink(path); err != nil {
+					return err
+				}
+			}
+
+			header, err := tar.FileInfoHeader(info, link)
+			if err != nil {
+				return err
+			}
+
+			header.Name = path[len(dataDir)+1:]
+			if err = tw.WriteHeader(header); err != nil {
 				return err
 			}
 
@@ -210,7 +207,8 @@ func compressed(dataDir string, blocks []*promtsdb.Block, writer *io.PipeWriter)
 				return fmt.Errorf("failed to read data file: %w", err)
 			}
 
-			if _, err := tw.Write(data); err != nil {
+			buf := bytes.NewBuffer(data)
+			if _, err := io.Copy(tw, buf); err != nil {
 				return fmt.Errorf("failed to write compressed file: %w", err)
 			}
 
