@@ -197,13 +197,12 @@ func compressed(dataDir string, blocks []*promtsdb.Block, writer *io.PipeWriter)
 				return err
 			}
 
-			// if dir, only write header
-			if info.IsDir() {
-				return writeHeader(path, info, tar.TypeDir)
-			}
-
 			if err := writeHeader(path, info, tar.TypeReg); err != nil {
 				return err
+			}
+
+			if !info.Mode().IsRegular() {
+				return nil
 			}
 
 			data, err := ioutil.ReadFile(path)
