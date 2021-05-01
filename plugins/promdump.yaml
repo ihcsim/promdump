@@ -3,7 +3,7 @@ kind: Plugin
 metadata:
   name: promdump
 spec:
-  version: v0.2.1
+  version: v0.2.2
   homepage: https://github.com/ihcsim/promdump
   shortDescription: promdump dumps the head and persistent blocks of Prometheus.
   description: |
@@ -21,8 +21,8 @@ spec:
       matchLabels:
         os: darwin
         arch: amd64
-    uri: https://github.com/ihcsim/promdump/releases/download/v0.2.1/kubectl-promdump-darwin-amd64-v0.2.1.tar.gz
-    sha256: 72d3abd5989e98e8adc30f98c61dcc101e080cacfbbfc64edc45aafdb0b34b5f
+    uri: https://github.com/ihcsim/promdump/releases/download/v0.2.2/kubectl-promdump-darwin-amd64-v0.2.2.tar.gz
+    sha256: b986f3a28435e5e5af0af9e1e29fd15a36f4500ef883471eed58c81b4dc29bbc
     bin: kubectl-promdump
     files:
     - from: "*"
@@ -31,8 +31,8 @@ spec:
       matchLabels:
         os: linux
         arch: amd64
-    uri: https://github.com/ihcsim/promdump/releases/download/v0.2.1/kubectl-promdump-linux-amd64-v0.2.1.tar.gz
-    sha256: 239d77a2d41361b1fa4c368bebb8b72ac283da4d81c44e6e2c68356bdcf67a6f
+    uri: https://github.com/ihcsim/promdump/releases/download/v0.2.2/kubectl-promdump-linux-amd64-v0.2.2.tar.gz
+    sha256: 21ef04b686161f713f0e321ed1ab94de42768be2e69dfb0a4647d492fc264837
     bin: kubectl-promdump
     files:
     - from: "*"
@@ -41,8 +41,8 @@ spec:
       matchLabels:
         os: windows
         arch: amd64
-    uri: https://github.com/ihcsim/promdump/releases/download/v0.2.1/kubectl-promdump-windows-amd64-v0.2.1.tar.gz
-    sha256: 278c8514d706b46fb8efe2ba08d12baedb77dede93bcb9cf5786ac5da64dd1fb
+    uri: https://github.com/ihcsim/promdump/releases/download/v0.2.2/kubectl-promdump-windows-amd64-v0.2.2.tar.gz
+    sha256: ae851b130e7871fd1a5fe1dda5a6c91f722b7a0886d51301f5d78e6cf5ae63a7
     bin: kubectl-promdump.exe
     files:
     - from: "*"
