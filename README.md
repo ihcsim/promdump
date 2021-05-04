@@ -197,6 +197,7 @@ Make sure that time frame of your query matches that of the restored data.
 ## FAQ
 
 Q: I am not seeing the restored data
+
 A: There are a few things you can check:
 
 * When generating the dump, make sure the start and end date times are
@@ -204,28 +205,30 @@ specified in the UTC time zone.
 * If using the Prometheus console, make sure the time filter falls within the
 time range of your data dump. You can confirm your restored data time range
 using the `kubectl promdump meta` subcommand.
-* To see if the restore completed successfully, compare the TSDB metadata of the
-target Prometheus with the source Prometheus to see if they match, using the
-`meta` subcommand. The head block metadata may deviate slightly depending on how
-old your data dump is.
-* Use commands like `kubectl exec` to run command likes `ls -al <data_dir>`
+* Compare the TSDB metadata of the target Prometheus with the source Prometheus
+to see if their time range match, using the `kubectl promdump meta` subcommand.
+The head block metadata may deviate slightly depending on how old your data dump
+is.
+* Use the `kubectl exec` command to run commands likes `ls -al <data_dir>`
 and `cat <data_dir>/<data_block>/meta.json` to confirm the data range of a
 particular data block.
-* Try restart the Prometheus pod after the restoration completed to give
-Prometheus a chance to replay the restored WALs. The restored data must be
-persisted to survive a restart.
+* Try restarting the Prometheus pod after the restoration to let Prometheus
+replay the restored WALs. The restored data must be persisted to survive a
+restart.
 * Check Prometheus logs to see if there are any errors due to corrupted data
 blocks.
-* Run the `restore` subcommand with the `--debug` flag to see if that provides
-more information.
+* Run the `kubectl promdump restore` subcommand with the `--debug` flag to see
+if it provides more hints.
 
 ## Limitations
 
-promdump is still in its experimental phase. It is used mainly to help with
-debugging issues, where data blocks are copied from one Prometheus instance to
-another development instance. Before restoring the data dump, promdump will
-delete the content of the data folder in the targeted Prometheus instance, to
-avoid corrupting the data blocks due to conflicting segment error such as:
+promdump is still in its experimental phase. SREs can use it to copy data blocks
+from one Prometheus instance to another development instance, while debugging
+cluster issues.
+
+Before restoring the data dump, promdump will erase the content of the data
+folder in the target Prometheus instance, to avoid corrupting the data blocks
+due to conflicting segment error such as:
 
 ```sh
 opening storage failed: get segment range: segments are not sequential
@@ -233,8 +236,8 @@ opening storage failed: get segment range: segments are not sequential
 
 It's not suitable for production backup/restore operation.
 
-Like `kubectl cp`, promdump requires the `tar` binary in the Prometheus
-container.
+Like `kubectl cp`, promdump requires the `tar` binary to be installed in the
+Prometheus container.
 
 ## Development
 
