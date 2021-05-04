@@ -66,9 +66,9 @@ release:
 	rm -rf "$(TARGET_RELEASE_DIR)" && \
 	mkdir -p "$(TARGET_RELEASE_DIR)" && \
 	for os in linux darwin windows ; do \
-		$(MAKE) BUILD_OS="$${os}" BUILD_ARCH="amd64" TARGET_BIN_DIR="$(TARGET_RELEASE_DIR)" cli && \
-		$(MAKE) BUILD_OS="$${os}" BUILD_ARCH="amd64" plugin ;\
+		$(MAKE) BUILD_OS="$${os}" BUILD_ARCH="amd64" TARGET_BIN_DIR="$(TARGET_RELEASE_DIR)" cli plugin ;\
 	done && \
+	$(MAKE) BUILD_OS="darwin" BUILD_ARCH="arm64" TARGET_BIN_DIR="$(TARGET_RELEASE_DIR)" cli plugin && \
 	$(MAKE) TARGET_BIN_DIR="$(TARGET_RELEASE_DIR)" core dist
 
 .PHONY: plugin

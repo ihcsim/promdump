@@ -26,6 +26,13 @@ spec:
     bin: kubectl-promdump
   - selector:
       matchLabels:
+        os: darwin
+        arch: arm64
+    uri: https://github.com/ihcsim/promdump/releases/download/v0.2.2/kubectl-promdump-darwin-amd64-v0.2.2.tar.gz
+    sha256: b986f3a28435e5e5af0af9e1e29fd15a36f4500ef883471eed58c81b4dc29bbc
+    bin: kubectl-promdump
+  - selector:
+      matchLabels:
         os: linux
         arch: amd64
     uri: https://github.com/ihcsim/promdump/releases/download/v0.2.2/kubectl-promdump-linux-amd64-v0.2.2.tar.gz
