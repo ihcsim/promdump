@@ -16,6 +16,8 @@ spec:
     'snapshot' API, promdump doesn't require Prometheus to be started with the
     '--web.enable-admin-api' option. Instead of dumping the entire TSDB, promdump
     offers the flexibility to filter persistent blocks by time range.
+
+    To get started, follow the steps at https://github.com/ihcsim/promdump#getting-started
   platforms:
   - selector:
       matchLabels:
