@@ -5,7 +5,7 @@ metadata:
 spec:
   version: v0.2.2
   homepage: https://github.com/ihcsim/promdump
-  shortDescription: promdump dumps the head and persistent blocks of Prometheus.
+  shortDescription: Dumps the head and persistent blocks of Prometheus.
   description: |
     promdump dumps the head and persistent blocks of Prometheus. It supports
     filtering the persistent blocks by time range.
@@ -24,9 +24,6 @@ spec:
     uri: https://github.com/ihcsim/promdump/releases/download/v0.2.2/kubectl-promdump-darwin-amd64-v0.2.2.tar.gz
     sha256: b986f3a28435e5e5af0af9e1e29fd15a36f4500ef883471eed58c81b4dc29bbc
     bin: kubectl-promdump
-    files:
-    - from: "*"
-      to: .
   - selector:
       matchLabels:
         os: linux
@@ -34,9 +31,6 @@ spec:
     uri: https://github.com/ihcsim/promdump/releases/download/v0.2.2/kubectl-promdump-linux-amd64-v0.2.2.tar.gz
     sha256: 21ef04b686161f713f0e321ed1ab94de42768be2e69dfb0a4647d492fc264837
     bin: kubectl-promdump
-    files:
-    - from: "*"
-      to: .
   - selector:
       matchLabels:
         os: windows
@@ -44,6 +38,3 @@ spec:
     uri: https://github.com/ihcsim/promdump/releases/download/v0.2.2/kubectl-promdump-windows-amd64-v0.2.2.tar.gz
     sha256: ae851b130e7871fd1a5fe1dda5a6c91f722b7a0886d51301f5d78e6cf5ae63a7
     bin: kubectl-promdump.exe
-    files:
-    - from: "*"
-      to: .
