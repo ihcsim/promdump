@@ -63,6 +63,8 @@ jobs:
         files: |
           target/releases/${{ needs.build.outputs.version }}/plugins/kubectl-promdump-darwin-amd64-${{ needs.build.outputs.version }}.tar.gz
           target/releases/${{ needs.build.outputs.version }}/plugins/kubectl-promdump-darwin-amd64-${{ needs.build.outputs.version }}.tar.gz.sha256
+          target/releases/${{ needs.build.outputs.version }}/plugins/kubectl-promdump-darwin-arm64-${{ needs.build.outputs.version }}.tar.gz
+          target/releases/${{ needs.build.outputs.version }}/plugins/kubectl-promdump-darwin-arm64-${{ needs.build.outputs.version }}.tar.gz.sha256
           target/releases/${{ needs.build.outputs.version }}/plugins/kubectl-promdump-linux-amd64-${{ needs.build.outputs.version }}.tar.gz
           target/releases/${{ needs.build.outputs.version }}/plugins/kubectl-promdump-linux-amd64-${{ needs.build.outputs.version }}.tar.gz.sha256
           target/releases/${{ needs.build.outputs.version }}/plugins/kubectl-promdump-windows-amd64-${{ needs.build.outputs.version }}.tar.gz
