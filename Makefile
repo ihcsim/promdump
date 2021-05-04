@@ -42,6 +42,7 @@ tidy-%:
 core:
 	CGO_ENABLED=0 GOOS="$(BUILD_OS)" GOARCH="$(BUILD_ARCH)" go build -o "$(TARGET_BIN_DIR)/promdump" ./core/cmd
 	shasum -a256 "$(TARGET_BIN_DIR)/promdump"  | awk '{print $$1}' > "$(TARGET_BIN_DIR)/promdump.sha256"
+	tar -C "$(TARGET_BIN_DIR)" -czvf "$(TARGET_BIN_DIR)/promdump-$(VERSION).tar.gz" promdump
 
 .PHONY: cli
 cli:
@@ -52,10 +53,10 @@ cli:
 	shasum -a256 "$(TARGET_BIN_DIR)/cli-$(BUILD_OS)-$(BUILD_ARCH)-$(VERSION)"$${extension}  | awk '{print $$1}' > "$(TARGET_BIN_DIR)/cli-$(BUILD_OS)-$(BUILD_ARCH)-$(VERSION).sha256"
 
 .PHONY: dist
-dist:
+dist: core
 	rm -rf "$(TARGET_DIST_DIR)"
 	mkdir -p "$(TARGET_DIST_DIR)"
-	tar -C "$(TARGET_BIN_DIR)" -czvf "$(TARGET_DIST_DIR)/promdump-$(VERSION).tar.gz" promdump
+	cp "$(TARGET_BIN_DIR)/promdump-$(VERSION).tar.gz" "$(TARGET_DIST_DIR)"/
 	shasum -a256 "$(TARGET_DIST_DIR)/promdump-$(VERSION).tar.gz"  | awk '{print $$1}' > "$(TARGET_DIST_DIR)/promdump-$(VERSION).tar.gz.sha256"
 	aws s3 cp --content-type=application/octet-stream "$(TARGET_DIST_DIR)/promdump-$(VERSION).tar.gz" s3://promdump
 	aws s3 cp --content-type=text/plain "$(TARGET_DIST_DIR)/promdump-$(VERSION).tar.gz.sha256" s3://promdump

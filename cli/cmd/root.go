@@ -80,7 +80,7 @@ https://github.com/ihcsim/promdump.
 				return fmt.Errorf("can't set missing defaults: %w", err)
 			}
 
-			if err := validate(cmd); err != nil {
+			if err := validateRootOptions(cmd); err != nil {
 				return fmt.Errorf("validation failed: %w", err)
 			}
 
@@ -119,8 +119,9 @@ https://github.com/ihcsim/promdump.
 	rootCmd.PersistentFlags().StringP("pod", "p", "", "Prometheus pod name")
 	rootCmd.PersistentFlags().StringP("container", "c", defaultContainer, "Prometheus container name")
 	rootCmd.PersistentFlags().StringP("data-dir", "d", defaultDataDir, "Prometheus data directory")
+	rootCmd.PersistentFlags().String("promdump-dir", "", "Local directory where the promdump .tar.gz file is. If unspecified, the .tar.gz file will be downloaded from the remote bucket. Not compatible with the -f option")
 	rootCmd.PersistentFlags().Bool("debug", defaultDebugEnabled, "run promdump in debug mode")
-	rootCmd.PersistentFlags().BoolP("force", "f", defaultForceDownload, "force the re-download of the promdump binary, which is saved to the local $TMP folder")
+	rootCmd.PersistentFlags().BoolP("force", "f", defaultForceDownload, "force the re-download of the promdump binary, which is saved to the local $TMP folder. Not compatible with the --promdump-dir option")
 	rootCmd.Flags().String("min-time", defaultMinTime.Format(timeFormat), "min time (UTC) of the samples (yyyy-mm-dd hh:mm:ss)")
 	rootCmd.Flags().String("max-time", defaultMaxTime.Format(timeFormat), "max time (UTC) of the samples (yyyy-mm-dd hh:mm:ss)")
 
@@ -160,7 +161,7 @@ func setMissingDefaults(cmd *cobra.Command) error {
 	return nil
 }
 
-func validate(cmd *cobra.Command) error {
+func validateRootOptions(cmd *cobra.Command) error {
 	argMinTime, err := cmd.Flags().GetString("min-time")
 	if err != nil {
 		return err
@@ -192,6 +193,20 @@ func validate(cmd *cobra.Command) error {
 
 	if maxTime.After(now) {
 		return fmt.Errorf("max time (%s) cannot be after now (%s)", argMaxTime, now.Format(timeFormat))
+	}
+
+	promdumpDir, err := cmd.Flags().GetString("promdump-dir")
+	if err != nil {
+		return err
+	}
+
+	force, err := cmd.Flags().GetBool("force")
+	if err != nil {
+		return err
+	}
+
+	if promdumpDir != "" && force {
+		return fmt.Errorf("can't use both --promdump-dir and --force together")
 	}
 
 	return nil
@@ -239,7 +254,7 @@ func k8sConfig(k8sConfigFlags *k8scliopts.ConfigFlags, fs *pflag.FlagSet) (*rest
 }
 
 func run(cmd *cobra.Command, config *config.Config, clientset *k8s.Clientset) error {
-	bin, err := downloadBinary(cmd)
+	bin, err := findBinary(cmd, config)
 	if err != nil {
 		return err
 	}
@@ -252,6 +267,15 @@ func run(cmd *cobra.Command, config *config.Config, clientset *k8s.Clientset) er
 	}()
 
 	return dumpSamples(config, clientset)
+}
+
+func findBinary(cmd *cobra.Command, config *config.Config) (io.Reader, error) {
+	// use the local file or download from bucket
+	if localFile := config.GetString("promdump-dir"); localFile != "" {
+		return os.Open(localFile)
+	}
+
+	return downloadBinary(cmd)
 }
 
 func downloadBinary(cmd *cobra.Command) (io.Reader, error) {

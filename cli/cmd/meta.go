@@ -23,6 +23,10 @@ kubectl promdump meta -p <pod> -n <ns>`,
 				return fmt.Errorf("can't set missing defaults: %w", err)
 			}
 
+			if err := validateMetaOptions(cmd); err != nil {
+				return fmt.Errorf("validation failed: %w", err)
+			}
+
 			if err := clientset.CanExec(); err != nil {
 				return fmt.Errorf("exec operation denied: %w", err)
 			}
@@ -36,7 +40,7 @@ kubectl promdump meta -p <pod> -n <ns>`,
 }
 
 func runMeta(cmd *cobra.Command, config *config.Config, clientset *k8s.Clientset) error {
-	bin, err := downloadBinary(cmd)
+	bin, err := findBinary(cmd, config)
 	if err != nil {
 		return err
 	}
@@ -49,6 +53,24 @@ func runMeta(cmd *cobra.Command, config *config.Config, clientset *k8s.Clientset
 	}()
 
 	return printMeta(config, clientset)
+}
+
+func validateMetaOptions(cmd *cobra.Command) error {
+	promdumpDir, err := cmd.Flags().GetString("promdump-dir")
+	if err != nil {
+		return err
+	}
+
+	force, err := cmd.Flags().GetBool("force")
+	if err != nil {
+		return err
+	}
+
+	if promdumpDir != "" && force {
+		return fmt.Errorf("can't use both --promdump-dir and --force together")
+	}
+
+	return nil
 }
 
 func printMeta(config *config.Config, clientset *k8s.Clientset) error {
