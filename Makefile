@@ -90,7 +90,7 @@ hack/prometheus-repos:
 	helm repo update
 
 .PHONY: hack/prometheus
-hack/prometheus:
+hack/prometheus: prometheus-repos
 	helm install prometheus prometheus-community/prometheus
 
 HACK_NAMESPACE ?= default

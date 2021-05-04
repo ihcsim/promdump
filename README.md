@@ -236,6 +236,35 @@ It's not suitable for production backup/restore operation.
 Like `kubectl cp`, promdump requires the `tar` binary in the Prometheus
 container.
 
+## Development
+
+To run linters and unit test:
+```sh
+make lint test
+```
+
+To produce local builds:
+```sh
+# the kubectl CLI plugin
+make cli
+
+# the promdump core
+make core
+```
+
+To install Prometheus via Helm:
+```sh
+make hack/prometheus
+```
+
+To do a release:
+```sh
+git tag -a v$version
+
+make dist release
+```
+Note that the GitHub Actions pipeline uses the same make release targets.
+
 ## License
 
 Licensed under the Apache License, Version 2.0 (the "License"); you may not use
