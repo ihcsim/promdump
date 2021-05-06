@@ -60,8 +60,11 @@ The `--debug` option can be used to output more verbose logs for each command.
 
 Install promdump as a `kubectl` plugin:
 ```sh
-# coming soon! until then, see https://kubernetes.io/docs/tasks/extend-kubectl/kubectl-plugins/#using-a-plugin
+kubectl krew update
+
 kubectl krew install promdump
+
+kubectl krew promdump --version
 ```
 
 For demonstration purposes, use [kind](https://kind.sigs.k8s.io/) to create two
