@@ -64,7 +64,7 @@ kubectl krew update
 
 kubectl krew install promdump
 
-kubectl krew promdump --version
+kubectl promdump --version
 ```
 
 For demonstration purposes, use [kind](https://kind.sigs.k8s.io/) to create two
