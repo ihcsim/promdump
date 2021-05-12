@@ -5,6 +5,14 @@
 promdump dumps the head and persistent blocks of Prometheus. It supports
 filtering the persistent blocks by time range.
 
+* [Why This Tool](#why-this-tool)
+* [How It Works](#how-it-works)
+* [Getting Started](#getting-started)
+* [FAQ](#faq)
+* [Limitations](#limitations)
+* [Development](#development)
+* [License](#license)
+
 ## Why This Tool
 
 When debugging Kubernetes clusters with restrictive access, I often find it
