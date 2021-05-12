@@ -210,7 +210,7 @@ Make sure that time frame of your query matches that of the restored data.
 Q: The `promdump meta` subcommand shows that the time range of the restored
 persistent data blocks is different from the ones I specified.
 
-A: This isn't a way to fetch partial data blocks from the TSDB. If the time
+A: There isn't a way to fetch partial data blocks from the TSDB. If the time
 range you specified spans across multiple data blocks, then all of them need
 to be retrieved. The amount of excessive data retrieved is dependent on the
 span of the data blocks.
@@ -227,20 +227,20 @@ A: There are a few things you can check:
 specified in the UTC time zone.
 * If using the Prometheus console, make sure the time filter falls within the
 time range of your data dump. You can confirm your restored data time range
-using the `kubectl promdump meta` subcommand.
+using the `promdump meta` subcommand.
 * Compare the TSDB metadata of the target Prometheus with the source Prometheus
-to see if their time range match, using the `kubectl promdump meta` subcommand.
+to see if their time range match, using the `promdump meta` subcommand.
 The head block metadata may deviate slightly depending on how old your data dump
 is.
 * Use the `kubectl exec` command to run commands likes `ls -al <data_dir>`
 and `cat <data_dir>/<data_block>/meta.json` to confirm the data range of a
 particular data block.
-* Try restarting the Prometheus pod after the restoration to let Prometheus
-replay the restored WALs. The restored data must be persisted to survive a
-restart.
+* Try restarting the target Prometheus pod after the restoration to let
+Prometheus replay the restored WALs. The restored data must be persisted to
+survive a restart.
 * Check Prometheus logs to see if there are any errors due to corrupted data
-blocks.
-* Run the `kubectl promdump restore` subcommand with the `--debug` flag to see
+blocks, and report any [issues](https://github.com/ihcsim/promdump/issues/new).
+* Run the `promdump restore` subcommand with the `--debug` flag to see
 if it provides more hints.
 
 ----
@@ -294,8 +294,7 @@ Now you can restore the `restored.tar.gz` file to your target Prometheus with:
 kubectl promdump restore -p $POD_NAME -t restored.tar.gz
 ```
 
-Note that deleting those head files may cause some corresponding data to be
-lost.
+Note that deleting those head files may cause some head data to be lost.
 
 ----
 ## Limitations
@@ -312,7 +311,10 @@ due to conflicting segment error such as:
 opening storage failed: get segment range: segments are not sequential
 ```
 
-It's not suitable for production backup/restore operation.
+Restoring a data dump containing out-of-sequence head blocks will crash the
+target Prometheus. See [FAQ](#faq) on how to fix the data dump.
+
+promdump not suitable for production backup/restore operation.
 
 Like `kubectl cp`, promdump requires the `tar` binary to be installed in the
 Prometheus container.
