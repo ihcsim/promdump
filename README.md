@@ -15,11 +15,12 @@ filtering the persistent blocks by time range.
 
 ## Why This Tool
 
-When debugging Kubernetes clusters with restrictive access, I often find it
-helpful to get access to the in-cluster Prometheus metrics. To reduce the amount
-of back-and-forth with the users (due to missing metrics, incorrect labels etc.)
-, it makes sense to ask the users to _"get me everything around the time of the
-incident"_.
+When debugging Kubernetes clusters, I often find it helpful to get access to the
+in-cluster Prometheus metrics. Since it is unlikely the users will grant me
+direct access to their Prometheus instancs, I have to ask them to export the
+data. To reduce the amount of back-and-forth with the users (due to missing
+metrics, incorrect labels etc.), it makes sense to ask the users to _"get me
+everything around the time of the incident"_.
 
 The most common way to achieve this is to use commands like `kubectl exec` and
 `kubectl cp` to compress and dump Prometheus' entire data directory. On
