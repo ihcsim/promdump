@@ -207,6 +207,18 @@ Make sure that time frame of your query matches that of the restored data.
 
 ## FAQ
 
+Q: The `promdump meta` subcommand shows that the time range of the restored
+persistent data blocks is different from the ones I specified.
+
+A: This isn't a way to fetch partial data blocks from the TSDB. If the time
+range you specified spans across multiple data blocks, then all of them need
+to be retrieved. The amount of excessive data retrieved is dependent on the
+span of the data blocks.
+
+The time range reported by the `promdump meta` subcommand should cover the one
+you specified.
+
+----
 Q: I am not seeing the restored data
 
 A: There are a few things you can check:
@@ -231,6 +243,61 @@ blocks.
 * Run the `kubectl promdump restore` subcommand with the `--debug` flag to see
 if it provides more hints.
 
+----
+Q: The `promdump meta` and `promdump restore` subcommands are failing with this
+error:
+```sh
+found unsequential head chunk files
+```
+
+A: This happens when there are out-of-sequence files in the `chunk_heads` folder
+of the source Prometheus instance.
+
+The `promdump` command can still be used to generate the dump `.tar.gz` file
+because it doesn't parse the folder content, using the `tsdb` API.  It simply
+adds the the entire `chunk_heads` folder to the dump `.tar.gz` file.
+
+E.g, a dump file with 2 out-of-sequence head files may look like this:
+```sh
+$ tar -tf dump.tar.gz
+./
+./chunks_head/
+./chunks_head/000027 # out-of-sequence
+./chunks_head/000029 # out-of-sequence
+./chunks_head/000033
+./chunks_head/000034
+./01F5ETH5T4MKTXJ1PEHQ71758P/
+./01F5ETH5T4MKTXJ1PEHQ71758P/index
+./01F5ETH5T4MKTXJ1PEHQ71758P/chunks/
+./01F5ETH5T4MKTXJ1PEHQ71758P/chunks/000001
+./01F5ETH5T4MKTXJ1PEHQ71758P/meta.json
+./01F5ETH5T4MKTXJ1PEHQ71758P/tombstones
+...
+```
+
+Any attempts to restore this dump file will crash the target Prometheus with the
+above error, complaining that files `000027` and `000028` are out-of-sequence.
+
+To fix this dump file, we will have to manually delete those offending files:
+```sh
+mkdir temp
+
+tar -xvfz dump.tar.gz -C temp
+
+rm temp/chunks_head/000027 chunks_head/000029
+
+tar -C temp -czvf restored.tar.gz .
+```
+
+Now you can restore the `restored.tar.gz` file to your target Prometheus with:
+```
+kubectl promdump restore -p $POD_NAME -t restored.tar.gz
+```
+
+Note that deleting those head files may cause some corresponding data to be
+lost.
+
+----
 ## Limitations
 
 promdump is still in its experimental phase. SREs can use it to copy data blocks
