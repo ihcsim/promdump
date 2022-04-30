@@ -9,11 +9,10 @@ GIT_COMMIT=$(shell git rev-parse --short HEAD)
 BASE_DIR = $(shell pwd)
 TARGET_DIR = $(BASE_DIR)/target
 TARGET_BIN_DIR = $(TARGET_DIR)/bin
-TARGET_DIST_DIR = $(TARGET_DIR)/dist
 TARGET_RELEASE_DIR = $(TARGET_DIR)/releases/$(VERSION)
 TARGET_PLUGINS_DIR = $(TARGET_RELEASE_DIR)/plugins
 
-all: test lint build dist
+all: test lint build
 
 build: prebuild core cli
 prebuild:
@@ -42,7 +41,8 @@ tidy-%:
 core:
 	CGO_ENABLED=0 GOOS="$(BUILD_OS)" GOARCH="$(BUILD_ARCH)" go build -o "$(TARGET_BIN_DIR)/promdump" ./core/cmd
 	shasum -a256 "$(TARGET_BIN_DIR)/promdump"  | awk '{print $$1}' > "$(TARGET_BIN_DIR)/promdump.sha256"
-	tar -C "$(TARGET_BIN_DIR)" -czvf "$(TARGET_BIN_DIR)/promdump-$(VERSION).tar.gz" promdump
+	tar -C "$(TARGET_BIN_DIR)" -czvf "$(TARGET_BIN_DIR)/promdump.tar.gz" promdump
+	cp "$(TARGET_BIN_DIR)/promdump.tar.gz" ./cli/cmd/
 
 .PHONY: cli
 cli:
@@ -52,15 +52,6 @@ cli:
 	CGO_ENABLED=0 GOOS="$(BUILD_OS)" GOARCH="$(BUILD_ARCH)" go build -ldflags="-X 'main.Version=$(VERSION)' -X 'main.Commit=$(GIT_COMMIT)'" -o "$(TARGET_BIN_DIR)/cli-$(BUILD_OS)-$(BUILD_ARCH)-$(VERSION)$${extension}" ./cli/cmd &&\
 	shasum -a256 "$(TARGET_BIN_DIR)/cli-$(BUILD_OS)-$(BUILD_ARCH)-$(VERSION)"$${extension}  | awk '{print $$1}' > "$(TARGET_BIN_DIR)/cli-$(BUILD_OS)-$(BUILD_ARCH)-$(VERSION).sha256"
 
-.PHONY: dist
-dist: core
-	rm -rf "$(TARGET_DIST_DIR)"
-	mkdir -p "$(TARGET_DIST_DIR)"
-	cp "$(TARGET_BIN_DIR)/promdump-$(VERSION).tar.gz" "$(TARGET_DIST_DIR)"/
-	shasum -a256 "$(TARGET_DIST_DIR)/promdump-$(VERSION).tar.gz"  | awk '{print $$1}' > "$(TARGET_DIST_DIR)/promdump-$(VERSION).tar.gz.sha256"
-	aws s3 cp --content-type=application/octet-stream "$(TARGET_DIST_DIR)/promdump-$(VERSION).tar.gz" s3://promdump
-	aws s3 cp --content-type=text/plain "$(TARGET_DIST_DIR)/promdump-$(VERSION).tar.gz.sha256" s3://promdump
-
 .PHONY: release
 release:
 	rm -rf "$(TARGET_RELEASE_DIR)" && \
@@ -69,7 +60,7 @@ release:
 		$(MAKE) BUILD_OS="$${os}" BUILD_ARCH="amd64" TARGET_BIN_DIR="$(TARGET_RELEASE_DIR)" cli plugin ;\
 	done && \
 	$(MAKE) BUILD_OS="darwin" BUILD_ARCH="arm64" TARGET_BIN_DIR="$(TARGET_RELEASE_DIR)" cli plugin && \
-	$(MAKE) TARGET_BIN_DIR="$(TARGET_RELEASE_DIR)" core dist
+	$(MAKE) TARGET_BIN_DIR="$(TARGET_RELEASE_DIR)" core
 
 .PHONY: plugin
 plugin:
@@ -90,7 +81,7 @@ hack/prometheus-repos:
 	helm repo update
 
 .PHONY: hack/prometheus
-hack/prometheus: prometheus-repos
+hack/prometheus: hack/prometheus-repos
 	helm install prometheus prometheus-community/prometheus
 
 HACK_NAMESPACE ?= default
