@@ -16,8 +16,8 @@ filtering the persistent blocks by time range.
 ## Why This Tool
 
 When debugging Kubernetes clusters, I often find it helpful to get access to the
-in-cluster Prometheus metrics. Since it is unlikely the users will grant me
-direct access to their Prometheus instancs, I have to ask them to export the
+in-cluster Prometheus metrics. Since it is unlikely that the users will grant me
+direct access to their Prometheus instance, I have to ask them to export the
 data. To reduce the amount of back-and-forth with the users (due to missing
 metrics, incorrect labels etc.), it makes sense to ask the users to _"get me
 everything around the time of the incident"_.
@@ -39,13 +39,8 @@ TSDB, promdump offers the flexibility to filter persistent blocks by time range.
 
 ## How It Works
 
-The promdump CLI downloads the `promdump-$(VERSION).tar.gz` file from a
-[public storage bucket](https://github.com/ihcsim/promdump/blob/98d9aebc80280fd5a6ca0fb3bed2418d822ac96f/cli/cmd/root.go#L25)
-to your local `/tmp` folder. The download will be skipped if such a file already
-exists. The `-f` option can be used to force a re-download.
-
-Then the CLI uploads the decompressed promdump binary to the targeted Prometheus
-container, via the pod's `exec` subresource.
+The promdump kubectl plugin uploads the compressed, embeded promdump to the
+targeted Prometheus container, via the pod's `exec` subresource.
 
 Within the Prometheus container, promdump queries the Prometheus TSDB using the
 [`tsdb`](https://pkg.go.dev/github.com/prometheus/prometheus/tsdb) package. It
@@ -117,7 +112,9 @@ the container name and data directoy._
 
 Dump the data from the first cluster:
 ```sh
-# check the tsdb metadata
+# check the tsdb metadata.
+# if it's reported that there are no persistent blocks yet, then no data dump
+# will be captured, until Prometheus persists the data.
 kubectl promdump meta --context=$CONTEXT -p $POD_NAME
 Head Block Metadata
 ------------------------
@@ -329,24 +326,40 @@ make lint test
 
 To produce local builds:
 ```sh
-# the kubectl CLI plugin
-make cli
-
 # the promdump core
 make core
+
+# the kubectl CLI plugin
+make cli
 ```
+
+To test the `kubectl` plugin locally, the plugin manifest at
+`plugins/promdump.yaml` must be updated with the new checksums. Then run:
+```sh
+kubectl krew install --manifest=plugins/promdump.yaml --archive=target/releases/<release>/plugins/kubectl-promdump-linux-amd64-<release>.tar.gz
+```
+
+
+All the binaries can be found in the local `target/bin` folder.
 
 To install Prometheus via Helm:
 ```sh
 make hack/prometheus
 ```
 
+To create a release candidate:
+
+```sh
+make release VERSION=<rc-name>
+```
+
 To do a release:
 ```sh
 git tag -a v$version
 
-make dist release
+make release
 ```
+All the release artifacts can be found in the local `target/releases` folder.
 Note that the GitHub Actions pipeline uses the same make release targets.
 
 ## License

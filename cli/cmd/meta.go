@@ -1,6 +1,7 @@
 package main
 
 import (
+	"bytes"
 	"fmt"
 	"os"
 
@@ -40,12 +41,8 @@ kubectl promdump meta -p <pod> -n <ns>`,
 }
 
 func runMeta(cmd *cobra.Command, config *config.Config, clientset *k8s.Clientset) error {
-	bin, err := findBinary(cmd, config)
-	if err != nil {
-		return err
-	}
-
-	if err := uploadToContainer(bin, config, clientset); err != nil {
+	r := bytes.NewBuffer(promdumpBin)
+	if err := uploadToContainer(r, config, clientset); err != nil {
 		return err
 	}
 	defer func() {
@@ -56,20 +53,6 @@ func runMeta(cmd *cobra.Command, config *config.Config, clientset *k8s.Clientset
 }
 
 func validateMetaOptions(cmd *cobra.Command) error {
-	promdumpDir, err := cmd.Flags().GetString("promdump-dir")
-	if err != nil {
-		return err
-	}
-
-	force, err := cmd.Flags().GetBool("force")
-	if err != nil {
-		return err
-	}
-
-	if promdumpDir != "" && force {
-		return fmt.Errorf("can't use both --promdump-dir and --force together")
-	}
-
 	return nil
 }
 
