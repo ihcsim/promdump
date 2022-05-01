@@ -71,3 +71,8 @@ jobs:
           target/releases/${{ needs.build.outputs.version }}/plugins/kubectl-promdump-windows-amd64-${{ needs.build.outputs.version }}.tar.gz.sha256
           target/releases/${{ needs.build.outputs.version }}/promdump
           target/releases/${{ needs.build.outputs.version }}/promdump.sha256
+    - name: krew-index
+      if: ${{ success() }}
+      uses: rajatjindal/krew-release-bot@v0.0.43
+      with:
+        krew_template_file: plugins/promdump.yaml
