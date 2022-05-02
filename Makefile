@@ -27,7 +27,7 @@ test-%:
 	go test ./$*/...
 
 lint-%:
-	cd ./$* && golangci-lint run
+	cd ./$* && golangci-lint run --timeout 5m
 
 lint: lint-core lint-cli
 	golangci-lint run
