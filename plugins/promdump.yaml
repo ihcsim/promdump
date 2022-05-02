@@ -24,13 +24,13 @@ spec:
         os: darwin
         arch: amd64
     bin: kubectl-promdump
-    {{ addURIAndSha "https://github.com/ihsim/promdump/releases/download/{{ .TagName }}/kubectl-promdump-darwin-amd64-{{ .TagName }}.tar.gz" .TagName }}
+    {{ addURIAndSha "https://github.com/ihcsim/promdump/releases/download/{{ .TagName }}/kubectl-promdump-darwin-amd64-{{ .TagName }}.tar.gz" .TagName }}
   - selector:
       matchLabels:
         os: darwin
         arch: arm64
     bin: kubectl-promdump
-    {{ addURIAndSha "https://github.com/ihsim/promdump/releases/download/{{ .TagName }}/kubectl-promdump-darwin-arm64-{{ .TagName }}.tar.gz" .TagName }}
+    {{ addURIAndSha "https://github.com/ihcsim/promdump/releases/download/{{ .TagName }}/kubectl-promdump-darwin-arm64-{{ .TagName }}.tar.gz" .TagName }}
   - selector:
       matchLabels:
         os: linux
