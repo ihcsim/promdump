@@ -3,4 +3,3 @@
 target/
 /server
 /pkg/tsdb/chunks_head/
-cli/cmd/promdump.tar.gz
