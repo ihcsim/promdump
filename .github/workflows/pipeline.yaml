@@ -13,7 +13,7 @@ jobs:
       uses: actions/checkout@v2
     - name: run linter
       run: |
-        curl -sSfL https://raw.githubusercontent.com/golangci/golangci-lint/master/install.sh | sh -s -- -b ./ v1.31.0
+        curl -sSfL https://raw.githubusercontent.com/golangci/golangci-lint/master/install.sh | sh -s -- -b ./ v1.46.2
         make lint PATH=$PATH:`pwd`
   build:
     runs-on: ubuntu-22.04
