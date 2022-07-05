@@ -12,6 +12,8 @@ TARGET_BIN_DIR = $(TARGET_DIR)/bin
 TARGET_RELEASE_DIR = $(TARGET_DIR)/releases/$(VERSION)
 TARGET_PLUGINS_DIR = $(TARGET_RELEASE_DIR)/plugins
 
+IMAGE_REPO ?= ghcr.io/ihcsim/krew-promdump
+
 all: test lint build
 
 build: prebuild core cli
@@ -73,6 +75,12 @@ plugin:
 	tar -C "$(TARGET_PLUGINS_DIR)" -czvf "$(TARGET_PLUGINS_DIR)/kubectl-promdump-$(BUILD_OS)-$(BUILD_ARCH)-$(VERSION).tar.gz" kubectl-promdump$${extension} LICENSE && \
 	rm "$(TARGET_PLUGINS_DIR)/kubectl-promdump$${extension}" && \
 	shasum -a256 $(TARGET_PLUGINS_DIR)/kubectl-promdump-$(BUILD_OS)-$(BUILD_ARCH)-$(VERSION).tar.gz | awk '{print $$1}' > $(TARGET_PLUGINS_DIR)/kubectl-promdump-$(BUILD_OS)-$(BUILD_ARCH)-$(VERSION).tar.gz.sha256
+
+image:
+	docker build --rm -t $(IMAGE_REPO):$(VERSION) .
+	if [ $${IMAGE_PUSH} ]; then \
+		docker push $(IMAGE_REPO):$(VERSION) ;\
+	fi
 
 .PHONY: hack/prometheus-repos
 hack/prometheus-repos:

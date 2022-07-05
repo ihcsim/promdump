@@ -6,16 +6,16 @@ on:
     - v*
 jobs:
   lint:
-    runs-on: ubuntu-18.04
+    runs-on: ubuntu-22.04
     steps:
     - name: checkout code
       uses: actions/checkout@v2
     - name: run linter
       run: |
-        curl -sSfL https://raw.githubusercontent.com/golangci/golangci-lint/master/install.sh | sh -s -- -b ./ v1.31.0
+        curl -sSfL https://raw.githubusercontent.com/golangci/golangci-lint/master/install.sh | sh -s -- -b ./ v1.46.2
         make lint PATH=$PATH:`pwd`
   build:
-    runs-on: ubuntu-18.04
+    runs-on: ubuntu-22.04
     outputs:
       version: ${{ steps.build.outputs.version }}
     steps:
@@ -34,16 +34,26 @@ jobs:
         version=$(echo "${{ github.ref }}" | awk -F'/' '{print $3}')
         make build VERSION="${version}"
         echo "::set-output name=version::${version}"
-  release:
+  image:
     if: ${{ startsWith(github.ref, 'refs/tags') }}
     needs:
     - lint
     - build
-    runs-on: ubuntu-18.04
-    env:
-      AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}
-      AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
-      AWS_DEFAULT_REGION: ${{ secrets.AWS_DEFAULT_REGION }}
+    runs-on: ubuntu-22.04
+    steps:
+    - name: checkout code
+      uses: actions/checkout@v2
+    - uses: docker/login-action@v2
+      with:
+        registry: ghcr.io
+        username: ${{ github.actor }}
+        password: ${{ secrets.GITHUB_TOKEN }}
+    - run: make image VERSION=${{ needs.build.outputs.version }} IMAGE_PUSH="true"
+  release:
+    if: ${{ startsWith(github.ref, 'refs/tags') }}
+    needs:
+    - image
+    runs-on: ubuntu-22.04
     steps:
     - name: install Go
       uses: actions/setup-go@v3
