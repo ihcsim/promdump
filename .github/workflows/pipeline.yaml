@@ -2,7 +2,6 @@ on:
   push:
     branches:
     - main
-    - dockerfile
     tags:
     - v*
 jobs:
@@ -36,7 +35,7 @@ jobs:
         make build VERSION="${version}"
         echo "::set-output name=version::${version}"
   image:
-    if: ${{ startsWith(github.ref, 'refs/tags') || github.ref == 'refs/heads/dockerfile' }}
+    if: ${{ startsWith(github.ref, 'refs/tags') }}
     needs:
     - lint
     - build
@@ -44,7 +43,12 @@ jobs:
     steps:
     - name: checkout code
       uses: actions/checkout@v2
-    - run: make image VERSION=${{ needs.build.outputs.version }}
+    - uses: docker/login-action@v2
+      with:
+        registry: ghcr.io
+        username: ${{ github.actor }}
+        password: ${{ secrets.GITHUB_TOKEN }}
+    - run: make image VERSION=${{ needs.build.outputs.version }} IMAGE_PUSH="true"
   release:
     if: ${{ startsWith(github.ref, 'refs/tags') }}
     needs:

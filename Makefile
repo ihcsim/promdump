@@ -77,7 +77,10 @@ plugin:
 	shasum -a256 $(TARGET_PLUGINS_DIR)/kubectl-promdump-$(BUILD_OS)-$(BUILD_ARCH)-$(VERSION).tar.gz | awk '{print $$1}' > $(TARGET_PLUGINS_DIR)/kubectl-promdump-$(BUILD_OS)-$(BUILD_ARCH)-$(VERSION).tar.gz.sha256
 
 image:
-	docker build --rm -t ${IMAGE_REPO}:${VERSION} .
+	docker build --rm -t $(IMAGE_REPO):$(VERSION) .
+	if [ $${IMAGE_PUSH} ]; then \
+		docker push $(IMAGE_REPO):$(VERSION) ;\
+	fi
 
 .PHONY: hack/prometheus-repos
 hack/prometheus-repos:
