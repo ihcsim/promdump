@@ -7,7 +7,6 @@ import (
 	"flag"
 	"fmt"
 	"io"
-	"io/ioutil"
 	"os"
 	"path/filepath"
 	"time"
@@ -202,7 +201,7 @@ func compressed(dataDir string, blocks []*promtsdb.Block, writer *io.PipeWriter)
 				return nil
 			}
 
-			data, err := ioutil.ReadFile(path)
+			data, err := os.ReadFile(path)
 			if err != nil {
 				return fmt.Errorf("failed to read data file: %w", err)
 			}

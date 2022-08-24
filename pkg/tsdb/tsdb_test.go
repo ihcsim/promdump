@@ -2,7 +2,7 @@ package tsdb
 
 import (
 	"fmt"
-	"io/ioutil"
+	"io"
 	"os"
 	"path/filepath"
 	"testing"
@@ -16,8 +16,8 @@ import (
 var series []*promtsdb.MetricSample
 
 func TestBlocks(t *testing.T) {
-	logger := log.New("debug", ioutil.Discard)
-	tempDir, err := ioutil.TempDir("", "promdump-tsdb-test")
+	logger := log.New("debug", io.Discard)
+	tempDir, err := os.MkdirTemp("", "promdump-tsdb-test")
 	if err != nil {
 		t.Fatal("unexpected error: ", err)
 	}
@@ -197,25 +197,25 @@ func initHeadBlock(tempDir string) error {
 	}
 
 	checkpointTestFile := filepath.Join("testdata", "wal", "checkpoint.00000036", "00000000")
-	checkpointTestdata, err := ioutil.ReadFile(checkpointTestFile)
+	checkpointTestdata, err := os.ReadFile(checkpointTestFile)
 	if err != nil {
 		return err
 	}
 
 	checkpointFile := filepath.Join(checkpointDir, "00000037")
-	if err := ioutil.WriteFile(checkpointFile, checkpointTestdata, 0600); err != nil {
+	if err := os.WriteFile(checkpointFile, checkpointTestdata, 0600); err != nil {
 		return err
 	}
 
 	// copy wal test data to tempDir
 	for _, testFile := range []string{"00000037", "00000038", "00000039"} {
-		wal, err := ioutil.ReadFile(filepath.Join("testdata", "wal", testFile))
+		wal, err := os.ReadFile(filepath.Join("testdata", "wal", testFile))
 		if err != nil {
 			return err
 		}
 
 		walFile := filepath.Join(walDir, testFile)
-		if err := ioutil.WriteFile(walFile, wal, 0600); err != nil {
+		if err := os.WriteFile(walFile, wal, 0600); err != nil {
 			return err
 		}
 	}

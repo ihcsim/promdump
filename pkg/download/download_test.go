@@ -3,7 +3,7 @@ package download
 import (
 	"crypto/sha256"
 	"fmt"
-	"io/ioutil"
+	"io"
 	"net/http"
 	"net/http/httptest"
 	"os"
@@ -19,7 +19,7 @@ func TestDownload(t *testing.T) {
 		dirname         = "promdump-test"
 		downloadContent = []byte("test response data")
 		force           = false
-		logger          = log.New("debug", ioutil.Discard)
+		logger          = log.New("debug", io.Discard)
 		timeout         = time.Second
 
 		mux          = http.NewServeMux()
@@ -51,7 +51,7 @@ func TestDownload(t *testing.T) {
 	}))
 
 	// the downloaded content will be saved in tempDir
-	tempDir, err := ioutil.TempDir("", dirname)
+	tempDir, err := os.MkdirTemp("", dirname)
 	if err != nil {
 		t.Fatal("unexpected error: ", err)
 	}
@@ -64,7 +64,7 @@ func TestDownload(t *testing.T) {
 	}
 
 	// read and compare the downloaded content with the actual data
-	actual, err := ioutil.ReadAll(reader)
+	actual, err := io.ReadAll(reader)
 	if err != nil {
 		t.Fatal("unexpected error: ", err)
 	}

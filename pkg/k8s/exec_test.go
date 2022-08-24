@@ -2,7 +2,7 @@ package k8s
 
 import (
 	"errors"
-	"io/ioutil"
+	"io"
 	"net/http"
 	"net/url"
 	"os"
@@ -51,7 +51,7 @@ func TestCanExec(t *testing.T) {
 			clientset := Clientset{
 				&config.Config{Viper: viper.New()},
 				&rest.Config{},
-				log.New("debug", ioutil.Discard),
+				log.New("debug", io.Discard),
 				k8sClientset,
 			}
 
@@ -84,7 +84,7 @@ func TestExec(t *testing.T) {
 	clientset := &Clientset{
 		testConfig,
 		&rest.Config{},
-		log.New("debug", ioutil.Discard),
+		log.New("debug", io.Discard),
 		k8sClientset,
 	}
 

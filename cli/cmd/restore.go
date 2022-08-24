@@ -3,7 +3,7 @@ package main
 import (
 	"bytes"
 	"fmt"
-	"io/ioutil"
+	"io"
 	"os"
 
 	"github.com/ihcsim/promdump/pkg/config"
@@ -49,7 +49,7 @@ func runRestore(config *config.Config, clientset *k8s.Clientset) error {
 		return fmt.Errorf("can't open dump file: %w", err)
 	}
 
-	data, err := ioutil.ReadAll(dumpFile)
+	data, err := io.ReadAll(dumpFile)
 	if err != nil {
 		return fmt.Errorf("can't read sample dump file: %w", err)
 	}

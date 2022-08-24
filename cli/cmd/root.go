@@ -4,7 +4,6 @@ import (
 	"bytes"
 	"fmt"
 	"io"
-	"io/ioutil"
 	"os"
 	"strconv"
 	"strings"
@@ -247,7 +246,7 @@ func run(cmd *cobra.Command, config *config.Config, clientset *k8s.Clientset) er
 func uploadToContainer(bin io.Reader, config *config.Config, clientset *k8s.Clientset) error {
 	dataDir := config.GetString("data-dir")
 	execCmd := []string{"tar", "-C", dataDir, "-xzvf", "-"}
-	return clientset.ExecPod(execCmd, bin, ioutil.Discard, os.Stderr, false)
+	return clientset.ExecPod(execCmd, bin, io.Discard, os.Stderr, false)
 }
 
 func dumpSamples(config *config.Config, clientset *k8s.Clientset) error {

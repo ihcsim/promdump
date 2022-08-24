@@ -2,7 +2,7 @@ package main
 
 import (
 	"fmt"
-	"io/ioutil"
+	"io"
 	"reflect"
 	"testing"
 
@@ -57,7 +57,7 @@ func initFixtures() error {
 		return err
 	}
 
-	cmd.SetOutput(ioutil.Discard)
+	cmd.SetOutput(io.Discard)
 	return nil
 }
 
