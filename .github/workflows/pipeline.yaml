@@ -12,7 +12,7 @@ jobs:
       uses: actions/checkout@v2
     - name: run linter
       run: |
-        curl -sSfL https://raw.githubusercontent.com/golangci/golangci-lint/master/install.sh | sh -s -- -b ./ v1.46.2
+        curl -sSfL https://raw.githubusercontent.com/golangci/golangci-lint/master/install.sh | sh -s -- -b ./ v1.48.0
         make lint PATH=$PATH:`pwd`
   build:
     runs-on: ubuntu-22.04
@@ -22,7 +22,7 @@ jobs:
     - name: install Go
       uses: actions/setup-go@v3
       with:
-        go-version: 1.16.3
+        go-version: 1.18.5
     - name: checkout code
       uses: actions/checkout@v2
     - name: test
@@ -58,7 +58,7 @@ jobs:
     - name: install Go
       uses: actions/setup-go@v3
       with:
-        go-version: 1.16.3
+        go-version: 1.18.5
     - name: checkout code
       uses: actions/checkout@v2
     - name: release
