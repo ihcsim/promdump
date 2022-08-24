@@ -41,6 +41,5 @@ spec:
       matchLabels:
         os: windows
         arch: amd64
-    sha256: 254a711f34a8da00a0705dc7b293068773288b87f932c7770c3f14e7db769c5f
     bin: kubectl-promdump.exe
     {{ addURIAndSha "https://github.com/ihcsim/promdump/releases/download/{{ .TagName }}/kubectl-promdump-windows-amd64-{{ .TagName }}.tar.gz" .TagName }}
