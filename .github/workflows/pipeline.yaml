@@ -55,6 +55,7 @@ jobs:
   release:
     if: ${{ startsWith(github.ref, 'refs/tags') }}
     needs:
+    - build
     - image
     runs-on: ubuntu-22.04
     steps:
